@@ -117,6 +117,7 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 | DEC-004 | Vitest untuk Test Runner | Cepat, native ESM/TS support, ideal untuk unit test kalkulasi nilai | Disepakati |
 | DEC-005 | ExcelJS untuk Export XLSX | Fitur lengkap untuk formatting tabel gradebook akademik | Disepakati |
 | DEC-006 | Penyimpanan File Dev: Local Private Directory dengan Route Handler Stream | File tidak disimpan di folder `public` statis; disajikan hanya setelah verifikasi session & enrollment | Disepakati |
+| DEC-007 | Pemisahan Tabel `users`, `lecturers`, dan `students` | Memisahkan data Dosen (`lecturers`) dan Mahasiswa (`students`) dari tabel `users` (khusus admin/superadmin) untuk *separation of concerns* yang lebih bersih | Disepakati |
 
 ---
 
