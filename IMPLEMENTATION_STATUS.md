@@ -5,7 +5,7 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 ---
 
 ## 1. Ringkasan Status Proyek
-- **Status Saat Ini:** Step C (Phase 1 Auth & Academic Structure) Selesai — Lolos Verifikasi Gate 1
+- **Status Saat Ini:** Step D (Phase 2 Assignment & Submission) Selesai — Lolos Verifikasi Gate 2
 - **Terakhir Diperbarui:** 19 November 2026
 - **Database:** MySQL 8.0.30 (`eduflow`) - 19 Tabel Aktif, Seed Data Siap
 - **Runtime:** Node.js v24.14.1, npm v11.11.0 (eksekusi via `npm.cmd`)
@@ -53,16 +53,17 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 
 ---
 
-### Step D — Phase 2: Assignment & Submission Management
-- [ ] CRUD Tugas (`assignments`) dengan mode pengumpulan (File, URL, Both)
-- [ ] Konfigurasi deadline, batas ukuran file, dan tipe MIME
-- [ ] Sistem penyimpanan file submission (Local secure storage untuk dev, abstraction untuk S3)
-- [ ] Form submission mahasiswa (Upload file, Input Google Drive URL, Simpan Draft, Kirim)
-- [ ] Tracking status: `draft`, `submitted`, `late`, `returned_for_revision`, `resubmitted`, `graded`
-- [ ] Versioning submission (`submission_versions`)
-- [ ] Panel penilaian tugas dosen: Review file/link, input skor, feedback, minta revisi
-- [ ] Unit & integration test untuk batas waktu deadline & validasi file/URL
-- [ ] Verification Gate 2: Typecheck, Lint, Test, Build lolos
+### Step D — Phase 2: Assignment & Submission Management (Selesai — Gate 2 Lolos)
+- [x] CRUD Tugas (`assignments`) dengan mode pengumpulan (File, URL, Both)
+- [x] Konfigurasi deadline, batas ukuran file (MB), aturan keterlambatan (`allowLate`), dan keterhubungan otomatis ke Gradebook
+- [x] Sistem penyimpanan file submission privat (`./storage/submissions`) dengan streaming via `/api/files/submission/[versionId]`
+- [x] Form submission mahasiswa: Unggah file privat, input Google Drive URL, Simpan Draft, dan Kirim Tugas
+- [x] Tracking status lengkap: `draft`, `submitted`, `late`, `returned_for_revision`, `resubmitted`, `graded`
+- [x] Versioning submission (`submission_versions`) mencatat seluruh riwayat revisi
+- [x] Panel penilaian tugas dosen: Review file/link privat, form input skor (0 s/d maxScore), feedback dosen, dan opsi minta revisi
+- [x] Sinkronisasi nilai otomatis ke tabel `grades` gradebook
+- [x] Unit & integration test untuk siklus hidup tugas, evaluasi deadline, dan penyimpanan file privat
+- [x] Verification Gate 2: Typecheck (0 error), Lint (0 warning), Test (15 passed), Build (sukses) lolos
 
 ---
 

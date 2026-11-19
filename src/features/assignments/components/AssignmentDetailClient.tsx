@@ -1,0 +1,495 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/ui/modal";
+import { Input } from "@/components/ui/input";
+import {
+  FileCheck2,
+  Clock,
+  Download,
+  ExternalLink,
+  ArrowLeft,
+  Search,
+  Check,
+  RotateCcw,
+} from "lucide-react";
+import { formatDateTime } from "@/lib/utils";
+import { gradeSubmission } from "../actions";
+
+export interface AssignmentDetailData {
+  id: string;
+  title: string;
+  instructions: string;
+  maxScore: string;
+  opensAt: Date | null;
+  dueAt: Date | null;
+  allowLate: boolean;
+  submissionMode: "file" | "url" | "both";
+  status: "draft" | "published" | "closed";
+  classId: string;
+  classDisplayName: string;
+  classCode: string;
+  courseCode: string;
+  courseName: string;
+  ownerUserId: string;
+}
+
+export interface StudentSubmissionRow {
+  studentUserId: string;
+  name: string;
+  email: string;
+  studentNumber: string;
+  submissionId: string | null;
+  status:
+    | "draft"
+    | "submitted"
+    | "late"
+    | "returned_for_revision"
+    | "resubmitted"
+    | "graded";
+  hasSubmitted: boolean;
+  submittedAt: Date | null;
+  currentVersion: number;
+  score: number | null;
+  feedback: string | null;
+  gradedAt: Date | null;
+  latestVersion: {
+    id: string;
+    versionNumber: number;
+    originalFilename: string | null;
+    externalUrl: string | null;
+    note: string | null;
+    submittedAt: Date;
+  } | null;
+}
+
+interface AssignmentDetailClientProps {
+  assignment: AssignmentDetailData;
+  submissionsList: StudentSubmissionRow[];
+}
+
+export function AssignmentDetailClient({
+  assignment,
+  submissionsList,
+}: AssignmentDetailClientProps) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Grading Modal State
+  const [selectedSub, setSelectedSub] = useState<StudentSubmissionRow | null>(null);
+  const [scoreInput, setScoreInput] = useState<string>("");
+  const [feedbackInput, setFeedbackInput] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const maxScore = parseFloat(assignment.maxScore);
+
+  // Statistics
+  const totalStudents = submissionsList.length;
+  const submittedCount = submissionsList.filter((s) => s.hasSubmitted).length;
+  const gradedCount = submissionsList.filter((s) => s.status === "graded").length;
+  const pendingCount = submissionsList.filter(
+    (s) => s.status === "submitted" || s.status === "late" || s.status === "resubmitted"
+  ).length;
+
+  const filtered = submissionsList.filter((s) => {
+    const matchesSearch =
+      !searchQuery.trim() ||
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.studentNumber.toLowerCase().includes(searchQuery.toLowerCase());
+
+    let matchesStatus = true;
+    if (statusFilter === "pending") {
+      matchesStatus = s.status === "submitted" || s.status === "late" || s.status === "resubmitted";
+    } else if (statusFilter === "graded") {
+      matchesStatus = s.status === "graded";
+    } else if (statusFilter === "not_submitted") {
+      matchesStatus = !s.hasSubmitted;
+    }
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const openGradingModal = (row: StudentSubmissionRow) => {
+    setSelectedSub(row);
+    setScoreInput(row.score !== null ? String(row.score) : "");
+    setFeedbackInput(row.feedback || "");
+    setErrorMsg(null);
+  };
+
+  const handleSaveGrade = async (requestRevision: boolean = false) => {
+    if (!selectedSub || !selectedSub.submissionId) return;
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    const scoreNum = scoreInput !== "" ? parseFloat(scoreInput) : null;
+    if (scoreNum !== null && (isNaN(scoreNum) || scoreNum < 0 || scoreNum > maxScore)) {
+      setErrorMsg(`Nilai harus berupa angka antara 0 sampai ${maxScore}`);
+      setIsLoading(false);
+      return;
+    }
+
+    const res = await gradeSubmission(
+      selectedSub.submissionId,
+      scoreNum,
+      feedbackInput,
+      requestRevision
+    );
+
+    if (res.error) {
+      setErrorMsg(res.error);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(false);
+    setSelectedSub(null);
+    router.refresh();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Navigation */}
+      <div>
+        <Link
+          href="/assignments"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#667085] hover:text-[#172033] mb-3"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Daftar Tugas
+        </Link>
+
+        {/* Assignment Header Card */}
+        <div className="bg-white rounded-2xl border border-[#E4E9F2] p-6 shadow-xs">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-[#EEF3FF] text-[#2457D6] uppercase tracking-wider">
+                  {assignment.courseCode} &bull; {assignment.classDisplayName}
+                </span>
+                <Badge status={assignment.status} />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-[#172033]">
+                {assignment.title}
+              </h1>
+              <p className="text-xs text-[#667085] mt-1.5 flex flex-wrap items-center gap-3">
+                <span className="text-[#B7791F] font-medium flex items-center gap-1">
+                  <Clock className="w-4 h-4" /> Tenggat: {formatDateTime(assignment.dueAt)}
+                </span>
+                <span>&bull;</span>
+                <span>Nilai Maks: {assignment.maxScore} Poin</span>
+                <span>&bull;</span>
+                <span>
+                  Metode:{" "}
+                  {assignment.submissionMode === "both"
+                    ? "File & URL"
+                    : assignment.submissionMode === "file"
+                    ? "File"
+                    : "URL"}
+                </span>
+                <span>&bull;</span>
+                <span>
+                  Keterlambatan: {assignment.allowLate ? "Diizinkan" : "Tidak diizinkan"}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* Instructions Box */}
+          <div className="mt-5 p-4 rounded-xl bg-[#F6F8FC] border border-[#E4E9F2]">
+            <span className="text-xs font-bold text-[#172033] block mb-1">
+              Petunjuk Pengerjaan:
+            </span>
+            <p className="text-xs text-[#667085] whitespace-pre-line leading-relaxed">
+              {assignment.instructions}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <p className="text-xs font-medium text-[#667085] uppercase tracking-wider">
+            Total Mahasiswa
+          </p>
+          <p className="text-2xl font-bold text-[#172033] mt-1 tabular-nums">
+            {totalStudents}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs font-medium text-[#667085] uppercase tracking-wider">
+            Sudah Terkumpul
+          </p>
+          <p className="text-2xl font-bold text-[#172033] mt-1 tabular-nums">
+            {submittedCount}
+          </p>
+        </Card>
+        <Card className="p-4 border-[#B7791F]/30 bg-[#FDF5E6]/30">
+          <p className="text-xs font-medium text-[#B7791F] uppercase tracking-wider">
+            Perlu Dinilai
+          </p>
+          <p className="text-2xl font-bold text-[#B7791F] mt-1 tabular-nums">
+            {pendingCount}
+          </p>
+        </Card>
+        <Card className="p-4 border-[#16845B]/30 bg-[#E8F5EF]/30">
+          <p className="text-xs font-medium text-[#16845B] uppercase tracking-wider">
+            Selesai Dinilai
+          </p>
+          <p className="text-2xl font-bold text-[#16845B] mt-1 tabular-nums">
+            {gradedCount}
+          </p>
+        </Card>
+      </div>
+
+      {/* Submissions Table Card */}
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#E4E9F2] pb-4">
+          <CardTitle>Daftar Pengumpulan Mahasiswa</CardTitle>
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#667085]" />
+              <input
+                type="text"
+                placeholder="Cari NIM atau nama..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-[#E4E9F2] pl-8 pr-3 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
+              />
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full sm:w-auto rounded-lg border border-[#E4E9F2] bg-white px-2.5 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
+            >
+              <option value="all">Semua Status</option>
+              <option value="pending">Perlu Dinilai</option>
+              <option value="graded">Sudah Dinilai</option>
+              <option value="not_submitted">Belum Mengumpulkan</option>
+            </select>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#F6F8FC] border-b border-[#E4E9F2] text-[#667085]">
+                <tr>
+                  <th className="py-3 px-4 font-semibold">NIM</th>
+                  <th className="py-3 px-4 font-semibold">Nama Mahasiswa</th>
+                  <th className="py-3 px-4 font-semibold text-center">Status</th>
+                  <th className="py-3 px-4 font-semibold">Waktu Pengumpulan</th>
+                  <th className="py-3 px-4 font-semibold text-center">Versi</th>
+                  <th className="py-3 px-4 font-semibold text-center">Nilai</th>
+                  <th className="py-3 px-4 font-semibold text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E4E9F2]">
+                {filtered.map((st) => (
+                  <tr key={st.studentUserId} className="hover:bg-[#F6F8FC]/50 transition-colors">
+                    <td className="py-3 px-4 font-semibold text-[#172033] tabular-nums">
+                      {st.studentNumber}
+                    </td>
+                    <td className="py-3 px-4 font-semibold text-[#172033]">
+                      {st.name}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {st.hasSubmitted ? (
+                        <Badge status={st.status} />
+                      ) : (
+                        <Badge variant="default">Belum Mengumpulkan</Badge>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-[#667085] tabular-nums">
+                      {st.submittedAt ? formatDateTime(st.submittedAt) : "—"}
+                    </td>
+                    <td className="py-3 px-4 text-center tabular-nums">
+                      {st.hasSubmitted ? `v${st.currentVersion}` : "—"}
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold tabular-nums">
+                      {st.score !== null ? (
+                        <span className="text-[#16845B]">
+                          {st.score} / {maxScore}
+                        </span>
+                      ) : (
+                        <span className="text-[#667085] font-normal">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {st.hasSubmitted ? (
+                        <Button
+                          variant={st.status === "graded" ? "outline" : "primary"}
+                          size="sm"
+                          onClick={() => openGradingModal(st)}
+                        >
+                          {st.status === "graded" ? "Lihat / Edit Nilai" : "Beri Nilai"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-[#667085] italic">Menunggu</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Grading Modal */}
+      <Modal
+        isOpen={selectedSub !== null}
+        onClose={() => setSelectedSub(null)}
+        title="Penilaian & Review Submisi"
+        description={
+          selectedSub
+            ? `Pemeriksaan tugas untuk ${selectedSub.name} (${selectedSub.studentNumber})`
+            : ""
+        }
+        maxWidth="lg"
+      >
+        {selectedSub && (
+          <div className="space-y-4">
+            {errorMsg && (
+              <div className="p-2.5 rounded-lg bg-[#FCECEE] border border-[#C43D4B]/20 text-xs text-[#C43D4B]">
+                {errorMsg}
+              </div>
+            )}
+
+            {/* Submission Preview Card */}
+            <div className="p-4 rounded-xl bg-[#F6F8FC] border border-[#E4E9F2] space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-[#172033]">
+                  Versi {selectedSub.currentVersion}
+                </span>
+                <span className="text-[#667085] tabular-nums">
+                  Dikumpulkan: {formatDateTime(selectedSub.submittedAt)}
+                </span>
+              </div>
+
+              {/* File Attachment */}
+              {selectedSub.latestVersion?.originalFilename && (
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-[#E4E9F2]">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <FileCheck2 className="w-4 h-4 text-[#2457D6] shrink-0" />
+                    <span className="text-xs font-medium text-[#172033] truncate">
+                      {selectedSub.latestVersion.originalFilename}
+                    </span>
+                  </div>
+                  <a
+                    href={`/api/files/submission/${selectedSub.latestVersion.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md bg-[#EEF3FF] text-[#2457D6] hover:bg-[#DCE7FD] transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Unduh File
+                  </a>
+                </div>
+              )}
+
+              {/* External URL */}
+              {selectedSub.latestVersion?.externalUrl && (
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-[#E4E9F2]">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <ExternalLink className="w-4 h-4 text-[#16845B] shrink-0" />
+                    <span className="text-xs font-medium text-[#172033] truncate">
+                      {selectedSub.latestVersion.externalUrl}
+                    </span>
+                  </div>
+                  <a
+                    href={selectedSub.latestVersion.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md bg-[#E8F5EF] text-[#16845B] hover:bg-[#D2EEDF] transition-colors"
+                  >
+                    Buka Tautan <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
+
+              {/* Student Note */}
+              {selectedSub.latestVersion?.note && (
+                <div className="text-xs space-y-0.5">
+                  <span className="text-[#667085] font-medium">Catatan Mahasiswa:</span>
+                  <p className="p-2.5 bg-white rounded-lg border border-[#E4E9F2] text-[#172033] italic">
+                    &quot;{selectedSub.latestVersion.note}&quot;
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Score & Feedback Form */}
+            <div className="space-y-3.5 pt-2">
+              <Input
+                label={`Nilai Tugas (Skala 0 - ${maxScore})`}
+                type="number"
+                min={0}
+                max={maxScore}
+                step="0.01"
+                placeholder={`0 - ${maxScore}`}
+                value={scoreInput}
+                onChange={(e) => setScoreInput(e.target.value)}
+                disabled={isLoading}
+              />
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-[#172033]">
+                  Feedback / Masukan Dosen
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Berikan umpan balik atau instruksi perbaikan..."
+                  value={feedbackInput}
+                  onChange={(e) => setFeedbackInput(e.target.value)}
+                  className="w-full rounded-lg border border-[#E4E9F2] bg-white p-3 text-sm text-[#172033] focus:outline-none focus:border-[#2457D6]"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-[#E4E9F2]">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-[#B7791F] border-[#B7791F]/30 hover:bg-[#FDF5E6] w-full sm:w-auto"
+                onClick={() => handleSaveGrade(true)}
+                isLoading={isLoading}
+              >
+                <RotateCcw className="w-4 h-4 mr-1.5" /> Minta Revisi
+              </Button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedSub(null)}
+                  disabled={isLoading}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleSaveGrade(false)}
+                  isLoading={isLoading}
+                >
+                  <Check className="w-4 h-4 mr-1.5" /> Simpan Nilai
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}

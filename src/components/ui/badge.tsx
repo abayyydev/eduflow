@@ -24,7 +24,8 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
     | "excused"
     | "absent"
     | "active"
-    | "archived";
+    | "archived"
+    | "closed";
 }
 
 const statusMap: Record<
@@ -39,6 +40,7 @@ const statusMap: Record<
   graded: { label: "Sudah Dinilai", variant: "success" },
   published: { label: "Dipublikasikan", variant: "success" },
   locked: { label: "Dikunci", variant: "default" },
+  closed: { label: "Ditutup", variant: "default" },
   present: { label: "Hadir", variant: "success" },
   sick: { label: "Sakit", variant: "info" },
   excused: { label: "Izin", variant: "warning" },
