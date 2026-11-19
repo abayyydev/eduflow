@@ -5,7 +5,7 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 ---
 
 ## 1. Ringkasan Status Proyek
-- **Status Saat Ini:** Step B (Phase 0 Foundation) Selesai — Lolos Verifikasi Gate 0 (Typecheck, Lint, Test, Build, Seed Sukses)
+- **Status Saat Ini:** Step C (Phase 1 Auth & Academic Structure) Selesai — Lolos Verifikasi Gate 1
 - **Terakhir Diperbarui:** 19 November 2026
 - **Database:** MySQL 8.0.30 (`eduflow`) - 19 Tabel Aktif, Seed Data Siap
 - **Runtime:** Node.js v24.14.1, npm v11.11.0 (eksekusi via `npm.cmd`)
@@ -39,16 +39,17 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 
 ---
 
-### Step C — Phase 1: Auth, Academic Structure & Enrollment
-- [ ] Server actions / API untuk Login & Logout dengan otorisasi role ketat
-- [ ] Server-side guards: Dosen middleware/action guard & Mahasiswa guard
-- [ ] CRUD Semester / Tahun Akademik (`academic_terms`)
-- [ ] CRUD Mata Kuliah (`courses`)
-- [ ] CRUD Kelas (`classes`) & status archive
-- [ ] Manajemen Mahasiswa (`users` role student, `student_profiles`)
-- [ ] Enrollment mahasiswa ke kelas (`enrollments`)
-- [ ] Pengujian isolasi multi-user: Mahasiswa hanya dapat mengakses kelas terdaftar
-- [ ] Verification Gate 1: Typecheck, Lint, Test, Build lolos
+### Step C — Phase 1: Auth, Academic Structure & Enrollment (Selesai — Gate 1 Lolos)
+- [x] Server actions & otorisasi ketat: `requireLecturer`, `requireStudent`, `requireUser`
+- [x] CRUD Semester / Tahun Akademik (`academic_terms`)
+- [x] CRUD Mata Kuliah (`courses`) dengan validasi kode dan nama
+- [x] CRUD Kelas (`classes`) dengan inisialisasi otomatis bobot 100% dan skala nilai
+- [x] Soft delete / Arsip kelas (`status: 'archived'`) dengan pencatatan `audit_logs`
+- [x] Manajemen Mahasiswa (`users` role student, `student_profiles`) & pencarian nama/NIM/email
+- [x] Enrollment mahasiswa ke kelas & manajemen peserta kelas
+- [x] Portal Mahasiswa: Kelas yang diikuti (`/student/classes`) & Detail materi/tugas kelas (`/student/classes/[id]`)
+- [x] Pengujian isolasi multi-user: Mahasiswa non-peserta ditolak (`FORBIDDEN_NOT_ENROLLED`)
+- [x] Verification Gate 1: Typecheck (0 error), Lint (0 warning), Test (11 passed), Build (sukses) lolos
 
 ---
 
