@@ -9,6 +9,7 @@ import {
   submissionVersions,
   courses,
   lecturers,
+  academicTerms,
 } from "@/server/db/schema";
 import { requireStudent } from "@/server/auth/session";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -298,4 +299,87 @@ async function getPreviousFileVersion(submissionId: string) {
     .limit(1);
 
   return version?.fileObjectKey || null;
+}
+
+export async function getStudentClassAssignments(classId: string) {
+  const student = await requireStudent();
+
+  // 1. Verify enrollment in class
+  const [enrollment] = await db
+    .select()
+    .from(enrollments)
+    .where(
+      and(
+        eq(enrollments.classId, classId),
+        eq(enrollments.studentId, student.userId),
+        eq(enrollments.enrollmentStatus, "active")
+      )
+    )
+    .limit(1);
+
+  if (!enrollment) {
+    throw new Error("FORBIDDEN_NOT_ENROLLED");
+  }
+
+  // 2. Class info
+  const [classInfo] = await db
+    .select({
+      id: classes.id,
+      displayName: classes.displayName,
+      classCode: classes.classCode,
+      scheduleText: classes.scheduleText,
+      courseCode: courses.code,
+      courseName: courses.name,
+      creditUnits: courses.creditUnits,
+      termName: academicTerms.name,
+      lecturerName: lecturers.name,
+      lecturerEmail: lecturers.email,
+    })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
+    .innerJoin(lecturers, eq(courses.lecturerId, lecturers.id))
+    .where(eq(classes.id, classId))
+    .limit(1);
+
+  if (!classInfo) return null;
+
+  // 3. Assignments for this class
+  const classAssignments = await db
+    .select({
+      id: assignments.id,
+      title: assignments.title,
+      instructions: assignments.instructions,
+      dueAt: assignments.dueAt,
+      opensAt: assignments.opensAt,
+      maxScore: assignments.maxScore,
+      submissionMode: assignments.submissionMode,
+      allowLate: assignments.allowLate,
+      submissionId: submissions.id,
+      submissionStatus: submissions.status,
+      score: submissions.score,
+      submittedAt: submissions.submittedAt,
+      gradedAt: submissions.gradedAt,
+      feedback: submissions.feedback,
+    })
+    .from(assignments)
+    .leftJoin(
+      submissions,
+      and(
+        eq(submissions.assignmentId, assignments.id),
+        eq(submissions.studentId, student.userId)
+      )
+    )
+    .where(
+      and(
+        eq(assignments.classId, classId),
+        eq(assignments.status, "published")
+      )
+    )
+    .orderBy(desc(assignments.dueAt));
+
+  return {
+    classInfo,
+    assignments: classAssignments,
+  };
 }

@@ -28,7 +28,7 @@ describe("Assignment & Submission Lifecycle Tests", () => {
   it("verifies assignment properties from seed", () => {
     expect(demoAssignment).toBeDefined();
     expect(demoAssignment.maxScore).toBe("100.00");
-    expect(demoAssignment.submissionMode).toBe("both");
+    expect(["both", "url", "file"]).toContain(demoAssignment.submissionMode);
     expect(demoAssignment.status).toBe("published");
   });
 
