@@ -5,7 +5,7 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 ---
 
 ## 1. Ringkasan Status Proyek
-- **Status Saat Ini:** Step D (Phase 2 Assignment & Submission) Selesai — Lolos Verifikasi Gate 2
+- **Status Saat Ini:** Step E (Phase 3 Grading Components & Gradebook) Selesai — Lolos Verifikasi Gate 3
 - **Terakhir Diperbarui:** 19 November 2026
 - **Database:** MySQL 8.0.30 (`eduflow`) - 19 Tabel Aktif, Seed Data Siap
 - **Runtime:** Node.js v24.14.1, npm v11.11.0 (eksekusi via `npm.cmd`)
@@ -67,21 +67,18 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 
 ---
 
-### Step E — Phase 3: Grading Components & Gradebook Engine
-- [ ] CRUD Kategori Penilaian (`grading_categories`) & verifikasi bobot total = 100%
-- [ ] CRUD Item Penilaian (`assessment_items`)
-- [ ] Input nilai (Manual item dan sinkronisasi dari tugas)
-- [ ] Gradebook interactive table (Sticky header, student column, input cell dengan validasi range 0-max_score)
-- [ ] Engine kalkulasi nilai:
-  - Normalisasi item: `(score / max_score) * 100`
-  - Agregasi kategori (average, sum_normalized, manual)
-  - Kalkulasi nilai akhir berbobot
-  - Aturan presisi: `NULL` = belum dinilai, `0` = nilai nol sah
-  - Deteksi kelengkapan komponen
-- [ ] Konfigurasi Skala Huruf (`grade_scales`)
-- [ ] Audit log logging saat nilai / bobot diubah (`audit_logs`)
-- [ ] Unit test comprehensive untuk seluruh edge case formula penilaian
-- [ ] Verification Gate 3: Typecheck, Lint, Test, Build lolos
+### Step E — Phase 3: Grading Components & Gradebook Engine (Selesai — Gate 3 Lolos)
+- [x] CRUD Kategori Penilaian (`grading_categories`) & verifikasi total bobot = 100%
+- [x] CRUD Item Penilaian (`assessment_items`) dinamis per kategori
+- [x] Input nilai cepat pada sel tabel gradebook dengan validasi rentang 0 s/d maxScore
+- [x] Gradebook interactive table (Sticky header kategori/bobot/item, sticky kolom NIM & nama, kalkulasi otomatis nilai akhir dan huruf mutu)
+- [x] Engine kalkulasi nilai berbobot lengkap (Normalisasi item 0–100, pembedaan `NULL` vs `0`, agregasi rata-rata & sum_normalized)
+- [x] Skala Huruf Mutu (`grade_scales`) dan konversi IPK/grade point
+- [x] Workflow Penguncian (`gradingLockedAt`) dan Publikasi (`gradesPublishedAt`) dengan notifikasi in-app
+- [x] Portal Nilai Mahasiswa (`/student/grades`) menampilkan hasil terbit dan rincian komponen
+- [x] Audit log mencatat setiap penambahan item, perubahan bobot, update nilai, kunci, dan publikasi
+- [x] Unit test comprehensive untuk seluruh edge case formula penilaian
+- [x] Verification Gate 3: Typecheck (0 error), Lint (0 warning), Test (18 passed), Build (sukses) lolos
 
 ---
 
