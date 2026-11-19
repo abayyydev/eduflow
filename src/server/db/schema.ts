@@ -211,9 +211,14 @@ export const learningMaterials = mysqlTable("learning_materials", {
     .references(() => classes.id, { onDelete: "cascade" }),
   meetingNumber: smallint("meeting_number"),
   title: varchar("title", { length: 180 }).notNull(),
+  materialType: varchar("material_type", { length: 30 }).default("article").notNull(),
+  sectionName: varchar("section_name", { length: 180 }),
+  contentBody: text("content_body"),
   description: text("description"),
   externalUrl: text("external_url"),
   fileObjectKey: varchar("file_object_key", { length: 500 }),
+  sortOrder: int("sort_order").default(0).notNull(),
+  durationMinutes: int("duration_minutes").default(2).notNull(),
   publishedAt: datetime("published_at"),
   createdBy: varchar("created_by", { length: 36 })
     .notNull()
@@ -225,6 +230,27 @@ export const learningMaterials = mysqlTable("learning_materials", {
     .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+// 8b. Material Progress
+export const materialProgress = mysqlTable(
+  "material_progress",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    studentId: varchar("student_id", { length: 36 })
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    materialId: varchar("material_id", { length: 36 })
+      .notNull()
+      .references(() => learningMaterials.id, { onDelete: "cascade" }),
+    isCompleted: boolean("is_completed").default(true).notNull(),
+    completedAt: datetime("completed_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_student_material").on(table.studentId, table.materialId),
+  ]
+);
 
 // 9. Grading Categories
 export const gradingCategories = mysqlTable("grading_categories", {

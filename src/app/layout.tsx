@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="id" data-theme="glassmorphism" suppressHydrationWarning>
       <body className="min-h-screen bg-[#F6F8FC] text-[#172033] antialiased">
         <ThemeProvider>{children}</ThemeProvider>
       </body>

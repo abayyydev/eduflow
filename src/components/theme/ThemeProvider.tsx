@@ -101,14 +101,14 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "minimalism",
+  theme: "glassmorphism",
   setTheme: () => {},
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [theme, setThemeState] = useState<UITheme>("minimalism");
+  const [theme, setThemeState] = useState<UITheme>("glassmorphism");
 
   useEffect(() => {
     try {
@@ -117,7 +117,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
         setThemeState(saved);
         document.documentElement.setAttribute("data-theme", saved);
       } else {
-        document.documentElement.setAttribute("data-theme", "minimalism");
+        setThemeState("glassmorphism");
+        document.documentElement.setAttribute("data-theme", "glassmorphism");
       }
     } catch {
       // Fallback

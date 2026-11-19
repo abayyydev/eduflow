@@ -1,17 +1,10 @@
 import { notFound } from "next/navigation";
 import {
-  getStudentEnrolledClasses,
-  getStudentClassDetail,
-} from "@/features/student-classes/actions";
-import {
-  getClassMaterials,
+  getStudentCurriculumWithProgress,
   getStudentMaterialsOverview,
 } from "@/features/materials/actions";
-import {
-  StudentMaterialsClient,
-} from "@/features/materials/components/StudentMaterialsClient";
+import { StudentMaterialViewerClient } from "@/features/materials/components/StudentMaterialViewerClient";
 import { StudentMaterialsOverviewClient } from "@/features/materials/components/StudentMaterialsOverviewClient";
-import { type MaterialItem } from "@/features/materials/components/MaterialsClient";
 
 interface StudentMaterialsPageProps {
   searchParams: Promise<{ classId?: string }>;
@@ -28,37 +21,23 @@ export default async function StudentMaterialsPage({
     return <StudentMaterialsOverviewClient enrolledClasses={overview} />;
   }
 
-  // 2. If classId is selected -> Show Materials for that specific class
-  const enrolledClasses = await getStudentEnrolledClasses();
-
-  let detail;
+  // 2. If classId is selected -> Show the Learning Hub with Progress Tracker & Interactive Viewer
+  let curriculum;
   try {
-    detail = await getStudentClassDetail(classId);
+    curriculum = await getStudentCurriculumWithProgress(classId);
   } catch {
     notFound();
   }
 
-  if (!detail) notFound();
-
-  const materials = await getClassMaterials(classId);
-
-  const classOptions = enrolledClasses.map((c) => ({
-    id: c.classId,
-    displayName: c.displayName,
-  }));
+  if (!curriculum) notFound();
 
   return (
-    <StudentMaterialsClient
-      initialMaterials={materials as MaterialItem[]}
-      currentClass={{
-        id: detail.classData.id,
-        displayName: detail.classData.displayName,
-        courseCode: detail.classData.courseCode,
-        classCode: detail.classData.classCode,
-        termName: detail.classData.termName,
-        lecturerName: detail.classData.lecturerName,
-      }}
-      enrolledClasses={classOptions}
+    <StudentMaterialViewerClient
+      classInfo={curriculum.classInfo}
+      initialSections={curriculum.sections}
+      initialProgressPercentage={curriculum.progressPercentage}
+      initialTotalMaterials={curriculum.totalMaterials}
+      initialCompletedCount={curriculum.completedCount}
     />
   );
 }
