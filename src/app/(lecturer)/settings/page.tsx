@@ -95,11 +95,10 @@ export default async function SettingsPage() {
               {terms.map((term) => (
                 <div
                   key={term.id}
-                  className={`p-3 rounded-lg border flex items-center justify-between text-xs ${
-                    term.isActive
+                  className={`p-3 rounded-lg border flex items-center justify-between text-xs ${term.isActive
                       ? "bg-[#E8F5EF] border-[#16845B]/30"
                       : "bg-[#F6F8FC] border-[#E4E9F2]"
-                  }`}
+                    }`}
                 >
                   <div>
                     <p className="font-bold text-[#172033]">{term.name}</p>

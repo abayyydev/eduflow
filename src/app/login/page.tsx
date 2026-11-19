@@ -9,7 +9,7 @@ import { GraduationCap, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, password }),
       });
 
       const data = await res.json();
@@ -44,10 +44,10 @@ export default function LoginPage() {
 
   const fillCredentials = (type: "lecturer" | "student") => {
     if (type === "lecturer") {
-      setEmail("dosen@eduflow.test");
+      setIdentifier("dosen@eduflow.test");
       setPassword("password123");
     } else {
-      setEmail("mhs1@eduflow.test");
+      setIdentifier("2611090062"); // Abdulaziz Gaafar Abdullah (NIM Mahasiswa)
       setPassword("password123");
     }
     setError(null);
@@ -75,7 +75,7 @@ export default function LoginPage() {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-[#172033]">Masuk ke Akun</h2>
               <p className="text-xs text-[#667085]">
-                Gunakan kredensial yang telah didaftarkan oleh dosen
+                Mahasiswa dapat masuk menggunakan <strong>NIM</strong> atau Email
               </p>
             </div>
 
@@ -86,11 +86,11 @@ export default function LoginPage() {
             )}
 
             <Input
-              label="Alamat Email"
-              type="email"
-              placeholder="nama@kampus.ac.id"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              label="NIM atau Alamat Email"
+              type="text"
+              placeholder="NIM (cth: 2611090062) atau email"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
               disabled={isLoading}
             />
@@ -119,7 +119,7 @@ export default function LoginPage() {
           <div className="mt-6 pt-5 border-t border-[#E4E9F2] space-y-2.5">
             <div className="flex items-center gap-1.5 text-xs font-medium text-[#667085]">
               <ShieldCheck className="w-4 h-4 text-[#2457D6]" />
-              <span>Akses Cepat Akun Demo (Seed Data):</span>
+              <span>Akses Cepat Akun Demo:</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -127,14 +127,14 @@ export default function LoginPage() {
                 onClick={() => fillCredentials("lecturer")}
                 className="px-3 py-2 text-xs font-medium text-[#2457D6] bg-[#EEF3FF] hover:bg-[#DCE7FD] rounded-lg transition-colors text-center border border-[#2457D6]/20"
               >
-                Demo Dosen
+                Demo Dosen (Email)
               </button>
               <button
                 type="button"
                 onClick={() => fillCredentials("student")}
                 className="px-3 py-2 text-xs font-medium text-[#16845B] bg-[#E8F5EF] hover:bg-[#D2EEDF] rounded-lg transition-colors text-center border border-[#16845B]/20"
               >
-                Demo Mahasiswa
+                Demo Mahasiswa (NIM)
               </button>
             </div>
           </div>

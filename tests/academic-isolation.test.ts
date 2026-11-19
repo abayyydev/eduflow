@@ -9,7 +9,6 @@ describe("Academic Structure & Multi-User Isolation Tests", () => {
   let enrolledStudent: any;
   let nonEnrolledStudent: any;
   let testClass1: any;
-  let testClass2: any;
 
   beforeAll(async () => {
     // 1. Fetch lecturer from lecturers table
@@ -19,37 +18,29 @@ describe("Academic Structure & Multi-User Isolation Tests", () => {
       .limit(1);
     lecturerUser = lecturer;
 
-    // 2. Fetch ASD Class A (enrolled for first 12 students)
+    // 2. Fetch Desain.03 class
     const [c1] = await db
       .select()
       .from(classes)
-      .where(eq(classes.displayName, "Algoritma dan Struktur Data - Kelas A"))
+      .where(eq(classes.classCode, "DESAIN.03"))
       .limit(1);
     testClass1 = c1;
 
-    // 3. Fetch ASD Class B (enrolled for students 13-20)
-    const [c2] = await db
-      .select()
-      .from(classes)
-      .where(eq(classes.displayName, "Algoritma dan Struktur Data - Kelas B"))
-      .limit(1);
-    testClass2 = c2;
-
-    // 4. Fetch mhs1 (enrolled in Class 1) from students table
+    // 3. Fetch Abdulaziz Gaafar Abdullah (NIM 2611090062) enrolled in Desain.03
     const [m1] = await db
       .select()
       .from(students)
-      .where(eq(students.email, "mhs1@eduflow.test"))
+      .where(eq(students.studentNumber, "2611090062"))
       .limit(1);
     enrolledStudent = m1;
 
-    // 5. Fetch mhs15 (enrolled in Class 2, NOT in Class 1) from students table
-    const [m15] = await db
+    // 4. Fetch Abu Zikri Agniya Ilman (NIM 2611090058, enrolled in Desain.02, NOT in Desain.03)
+    const [mNon] = await db
       .select()
       .from(students)
-      .where(eq(students.email, "mhs15@eduflow.test"))
+      .where(eq(students.studentNumber, "2611090058"))
       .limit(1);
-    nonEnrolledStudent = m15;
+    nonEnrolledStudent = mNon;
   });
 
   it("verifies strong password hashing and secure verification", async () => {

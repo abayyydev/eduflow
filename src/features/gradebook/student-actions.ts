@@ -90,14 +90,14 @@ export async function getStudentGradesOverview(): Promise<StudentClassGradeSumma
     const itemList =
       catIds.length > 0
         ? await db
-            .select()
-            .from(assessmentItems)
-            .where(
-              sql`${assessmentItems.categoryId} IN (${sql.join(
-                catIds.map((id) => sql`${id}`),
-                sql`, `
-              )})`
-            )
+          .select()
+          .from(assessmentItems)
+          .where(
+            sql`${assessmentItems.categoryId} IN (${sql.join(
+              catIds.map((id) => sql`${id}`),
+              sql`, `
+            )})`
+          )
         : [];
 
     const itemIds = itemList.map((i) => i.id);
@@ -106,17 +106,17 @@ export async function getStudentGradesOverview(): Promise<StudentClassGradeSumma
     const studentGrades =
       itemIds.length > 0
         ? await db
-            .select()
-            .from(grades)
-            .where(
-              and(
-                eq(grades.studentId, student.userId),
-                sql`${grades.assessmentItemId} IN (${sql.join(
-                  itemIds.map((id) => sql`${id}`),
-                  sql`, `
-                )})`
-              )
+          .select()
+          .from(grades)
+          .where(
+            and(
+              eq(grades.studentId, student.userId),
+              sql`${grades.assessmentItemId} IN (${sql.join(
+                itemIds.map((id) => sql`${id}`),
+                sql`, `
+              )})`
             )
+          )
         : [];
 
     const gradesMap = new Map(studentGrades.map((g) => [g.assessmentItemId, g]));

@@ -2,18 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { users, lecturers, students } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { verifyPassword, createSession, type SessionUser } from "@/server/auth/session";
 
 const loginSchema = z.object({
-  email: z.string().email("Format email tidak valid"),
+  identifier: z.string().min(1, "NIM atau Email wajib diisi"),
   password: z.string().min(1, "Password wajib diisi"),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const parsed = loginSchema.safeParse(body);
+    const rawIdentifier = body.identifier || body.email;
+    const parsed = loginSchema.safeParse({
+      identifier: rawIdentifier,
+      password: body.password,
+    });
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -22,69 +26,80 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = parsed.data;
+    const { identifier, password } = parsed.data;
+    const cleanId = identifier.trim().toLowerCase();
 
     let authenticatedUser: SessionUser | null = null;
     let redirectUrl = "/dashboard";
 
-    // 1. Check in lecturers table
-    const [lecturer] = await db
+    // 1. Check in students table first (NIM or Email)
+    const [student] = await db
       .select()
-      .from(lecturers)
-      .where(eq(lecturers.email, email))
+      .from(students)
+      .where(
+        or(
+          eq(students.studentNumber, identifier.trim()),
+          eq(students.email, cleanId)
+        )
+      )
       .limit(1);
 
-    if (lecturer && lecturer.isActive) {
-      const isValid = await verifyPassword(password, lecturer.passwordHash);
+    if (student && student.isActive) {
+      const isValid = await verifyPassword(password, student.passwordHash);
       if (isValid) {
         await db
-          .update(lecturers)
+          .update(students)
           .set({ lastLoginAt: new Date() })
-          .where(eq(lecturers.id, lecturer.id));
+          .where(eq(students.id, student.id));
 
         authenticatedUser = {
-          userId: lecturer.id,
-          name: lecturer.name,
-          email: lecturer.email,
-          role: "lecturer",
+          userId: student.id,
+          name: student.name,
+          email: student.email,
+          role: "student",
         };
-        redirectUrl = "/dashboard";
+        redirectUrl = "/student/dashboard";
       }
     }
 
-    // 2. If not found in lecturers, check in students table
+    // 2. Check in lecturers table (Email or NIP)
     if (!authenticatedUser) {
-      const [student] = await db
+      const [lecturer] = await db
         .select()
-        .from(students)
-        .where(eq(students.email, email))
+        .from(lecturers)
+        .where(
+          or(
+            eq(lecturers.email, cleanId),
+            eq(lecturers.nip, identifier.trim())
+          )
+        )
         .limit(1);
 
-      if (student && student.isActive) {
-        const isValid = await verifyPassword(password, student.passwordHash);
+      if (lecturer && lecturer.isActive) {
+        const isValid = await verifyPassword(password, lecturer.passwordHash);
         if (isValid) {
           await db
-            .update(students)
+            .update(lecturers)
             .set({ lastLoginAt: new Date() })
-            .where(eq(students.id, student.id));
+            .where(eq(lecturers.id, lecturer.id));
 
           authenticatedUser = {
-            userId: student.id,
-            name: student.name,
-            email: student.email,
-            role: "student",
+            userId: lecturer.id,
+            name: lecturer.name,
+            email: lecturer.email,
+            role: "lecturer",
           };
-          redirectUrl = "/student/dashboard";
+          redirectUrl = "/dashboard";
         }
       }
     }
 
-    // 3. If not found in students, check in users table (superadmin / admin)
+    // 3. Check in users table (superadmin / admin)
     if (!authenticatedUser) {
       const [adminUser] = await db
         .select()
         .from(users)
-        .where(eq(users.email, email))
+        .where(eq(users.email, cleanId))
         .limit(1);
 
       if (adminUser && adminUser.isActive) {
@@ -108,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     if (!authenticatedUser) {
       return NextResponse.json(
-        { error: "Email atau kata sandi tidak sesuai" },
+        { error: "NIM / Email atau kata sandi tidak sesuai" },
         { status: 401 }
       );
     }
