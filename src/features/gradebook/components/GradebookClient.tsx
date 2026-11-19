@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Calculator,
   Lock,
@@ -87,6 +88,9 @@ export function GradebookClient({
     }))
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   const filteredStudents = data.students.filter((st) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -95,6 +99,12 @@ export function GradebookClient({
       st.studentNumber.toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
+  const paginatedStudents = filteredStudents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleCellBlur = async (
     assessmentItemId: string,
@@ -392,7 +402,10 @@ export function GradebookClient({
               type="text"
               placeholder="Cari NIM atau nama mahasiswa..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-[#E4E9F2] pl-8 pr-3 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
             />
           </div>
@@ -482,7 +495,7 @@ export function GradebookClient({
             </thead>
 
             <tbody className="divide-y divide-[#E4E9F2]">
-              {filteredStudents.map((st) => (
+              {paginatedStudents.map((st) => (
                 <tr key={st.studentUserId} className="hover:bg-[#F6F8FC]/60 transition-colors">
                   {/* Sticky Student Columns */}
                   <td className="py-2.5 px-4 font-medium text-[#172033] sticky left-0 z-10 bg-white tabular-nums">
@@ -570,6 +583,14 @@ export function GradebookClient({
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredStudents.length}
+          pageSize={pageSize}
+        />
       </Card>
 
       {/* Modal Rincian Kalkulasi Mahasiswa */}

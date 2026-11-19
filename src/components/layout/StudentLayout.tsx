@@ -16,6 +16,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 interface StudentLayoutProps {
   user: {
@@ -85,6 +86,8 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ user, children }) 
 
           {/* User Profile & Actions */}
           <div className="flex items-center gap-3">
+            <ThemeSwitcher />
+
             <Link
               href="/student/notifications"
               className="p-2 rounded-lg text-[#667085] hover:bg-[#F6F8FC] hover:text-[#172033] relative transition-colors"

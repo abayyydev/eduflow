@@ -13,6 +13,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Tabular numerals for grade tables */
@@ -27,7 +28,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #F6F8FC;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -37,4 +38,290 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #B6C0D4;
+}
+
+/* ==========================================================================
+   10 UI THEMES SYSTEM (EDUFlow UI Styling Engine)
+   ========================================================================== */
+
+/* 1. MINIMALISM -> Minimalis standar */
+[data-theme="minimalism"] {
+  --background: #F6F8FC;
+  --foreground: #172033;
+}
+
+/* 2. GLASSMORPHISM -> Bening2 kaya kaca */
+[data-theme="glassmorphism"] body,
+[data-theme="glassmorphism"] {
+  background: linear-gradient(135deg, #E0E7FF 0%, #F5F3FF 45%, #E0F2FE 100%) !important;
+  background-attachment: fixed !important;
+}
+
+[data-theme="glassmorphism"] .bg-white,
+[data-theme="glassmorphism"] header,
+[data-theme="glassmorphism"] aside {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.65) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08) !important;
+}
+
+[data-theme="glassmorphism"] input,
+[data-theme="glassmorphism"] select {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 3. NEUMORPHISM -> Komponen timbul seperti 3D */
+[data-theme="neumorphism"] body,
+[data-theme="neumorphism"] {
+  background: #E0E5EC !important;
+}
+
+[data-theme="neumorphism"] .bg-white,
+[data-theme="neumorphism"] header,
+[data-theme="neumorphism"] aside {
+  background: #E0E5EC !important;
+  box-shadow: 8px 8px 16px #B8B9BE, -8px -8px 16px #FFFFFF !important;
+  border: none !important;
+  border-radius: 16px !important;
+}
+
+[data-theme="neumorphism"] input,
+[data-theme="neumorphism"] select {
+  background: #E0E5EC !important;
+  box-shadow: inset 3px 3px 6px #B8B9BE, inset -3px -3px 6px #FFFFFF !important;
+  border: none !important;
+}
+
+[data-theme="neumorphism"] button:not(.unstyled) {
+  box-shadow: 4px 4px 8px #B8B9BE, -4px -4px 8px #FFFFFF !important;
+  border: none !important;
+}
+
+[data-theme="neumorphism"] button:not(.unstyled):active {
+  box-shadow: inset 2px 2px 5px #B8B9BE, inset -2px -2px 5px #FFFFFF !important;
+}
+
+/* 4. NEO-BRUTALISM -> Warna berani dan solid (nyentrik) */
+[data-theme="neo-brutalism"] body,
+[data-theme="neo-brutalism"] {
+  background: #FFFDF5 !important;
+}
+
+[data-theme="neo-brutalism"] .bg-white,
+[data-theme="neo-brutalism"] header,
+[data-theme="neo-brutalism"] aside {
+  background: #FFFFFF !important;
+  border: 2.5px solid #000000 !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+  border-radius: 8px !important;
+}
+
+[data-theme="neo-brutalism"] button:not(.unstyled) {
+  border: 2px solid #000000 !important;
+  box-shadow: 3px 3px 0px #000000 !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+[data-theme="neo-brutalism"] button:not(.unstyled):hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #000000 !important;
+}
+
+[data-theme="neo-brutalism"] button:not(.unstyled):active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #000000 !important;
+}
+
+[data-theme="neo-brutalism"] input,
+[data-theme="neo-brutalism"] select {
+  border: 2px solid #000000 !important;
+  box-shadow: 2px 2px 0px #000000 !important;
+  border-radius: 6px !important;
+}
+
+/* 5. CLAYMORPHISM -> Empuk kaya mainan clay */
+[data-theme="claymorphism"] body,
+[data-theme="claymorphism"] {
+  background: #EEF2FF !important;
+}
+
+[data-theme="claymorphism"] .bg-white,
+[data-theme="claymorphism"] header,
+[data-theme="claymorphism"] aside {
+  background: #FFFFFF !important;
+  border-radius: 24px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 10px 10px 20px rgba(166, 180, 200, 0.45),
+              -8px -8px 16px rgba(255, 255, 255, 0.9),
+              inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+              inset -2px -2px 4px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="claymorphism"] button:not(.unstyled) {
+  border-radius: 16px !important;
+  box-shadow: 4px 4px 10px rgba(36, 87, 214, 0.25),
+              inset 2px 2px 3px rgba(255, 255, 255, 0.4),
+              inset -2px -2px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 6. BENTO GRID -> Kotak kotak rapi */
+[data-theme="bento"] body,
+[data-theme="bento"] {
+  background: #F8FAFC !important;
+}
+
+[data-theme="bento"] .bg-white,
+[data-theme="bento"] header,
+[data-theme="bento"] aside {
+  background: #FFFFFF !important;
+  border: 1.5px solid #E2E8F0 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="bento"] button:not(.unstyled) {
+  border-radius: 12px !important;
+}
+
+/* 7. CYBERPUNK NEON -> Futuristik, nyala-nyala */
+[data-theme="cyberpunk"] body,
+[data-theme="cyberpunk"] {
+  background: #090B10 !important;
+  color: #E2E8F0 !important;
+}
+
+[data-theme="cyberpunk"] .bg-white,
+[data-theme="cyberpunk"] header,
+[data-theme="cyberpunk"] aside {
+  background: #0F121A !important;
+  color: #E2E8F0 !important;
+  border: 1px solid #00FFCC !important;
+  box-shadow: 0 0 14px rgba(0, 255, 204, 0.2), inset 0 0 6px rgba(0, 255, 204, 0.05) !important;
+  border-radius: 6px !important;
+}
+
+[data-theme="cyberpunk"] h1,
+[data-theme="cyberpunk"] h2,
+[data-theme="cyberpunk"] h3 {
+  color: #00FFCC !important;
+  text-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
+}
+
+[data-theme="cyberpunk"] input,
+[data-theme="cyberpunk"] select {
+  background: #141824 !important;
+  color: #00FFCC !important;
+  border: 1px solid #FF007F !important;
+  box-shadow: 0 0 8px rgba(255, 0, 127, 0.25) !important;
+}
+
+[data-theme="cyberpunk"] button:not(.unstyled) {
+  border: 1px solid #00FFCC !important;
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.35) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-weight: 700 !important;
+}
+
+/* 8. RETRO WINDOWS -> Era 90an */
+[data-theme="retro-windows"] body,
+[data-theme="retro-windows"] {
+  background: #008080 !important;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+[data-theme="retro-windows"] .bg-white,
+[data-theme="retro-windows"] header,
+[data-theme="retro-windows"] aside {
+  background: #C0C0C0 !important;
+  color: #000000 !important;
+  border: 2.5px outset #FFFFFF !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px #000000 !important;
+}
+
+[data-theme="retro-windows"] button:not(.unstyled) {
+  background: #C0C0C0 !important;
+  color: #000000 !important;
+  border: 2px outset #FFFFFF !important;
+  border-radius: 0px !important;
+  box-shadow: 1px 1px 0px #000000 !important;
+}
+
+[data-theme="retro-windows"] button:not(.unstyled):active {
+  border: 2px inset #FFFFFF !important;
+}
+
+[data-theme="retro-windows"] input,
+[data-theme="retro-windows"] select {
+  background: #FFFFFF !important;
+  border: 2px inset #808080 !important;
+  border-radius: 0px !important;
+}
+
+/* 9. SWISS EDITORIAL -> Font rapi */
+[data-theme="swiss"] body,
+[data-theme="swiss"] {
+  background: #F4F4F4 !important;
+  font-family: "Helvetica Neue", Arial, sans-serif !important;
+}
+
+[data-theme="swiss"] .bg-white,
+[data-theme="swiss"] header,
+[data-theme="swiss"] aside {
+  background: #FFFFFF !important;
+  border: 2px solid #111111 !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+[data-theme="swiss"] h1,
+[data-theme="swiss"] h2,
+[data-theme="swiss"] h3 {
+  letter-spacing: -0.03em !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="swiss"] button:not(.unstyled) {
+  border-radius: 0px !important;
+  border: 2px solid #111111 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-weight: 700 !important;
+}
+
+/* 10. SKEUOMORPHISM -> Kaya benda nyata */
+[data-theme="skeuomorphism"] body,
+[data-theme="skeuomorphism"] {
+  background: #ECEFF1 !important;
+}
+
+[data-theme="skeuomorphism"] .bg-white,
+[data-theme="skeuomorphism"] header,
+[data-theme="skeuomorphism"] aside {
+  background: linear-gradient(180deg, #FFFFFF 0%, #EFF2F5 100%) !important;
+  border: 1px solid #BAC2CB !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 8px -1px rgba(0, 0, 0, 0.12),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06),
+              inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+[data-theme="skeuomorphism"] button:not(.unstyled) {
+  background: linear-gradient(180deg, #2D65F0 0%, #1A46B8 100%) !important;
+  border: 1px solid #14358E !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 8px !important;
+}
+
+[data-theme="skeuomorphism"] button:not(.unstyled):active {
+  background: linear-gradient(180deg, #1A46B8 0%, #2D65F0 100%) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }

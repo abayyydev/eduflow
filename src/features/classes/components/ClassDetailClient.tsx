@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { Pagination } from "@/components/ui/pagination";
 import {
   GraduationCap,
   Users,
@@ -84,6 +85,8 @@ export function ClassDetailClient({
 }: ClassDetailClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [studentPage, setStudentPage] = useState(1);
+  const studentPageSize = 10;
 
   // Modal states
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -302,44 +305,56 @@ export function ClassDetailClient({
               Belum ada mahasiswa terdaftar di kelas ini. Klik tombol di atas untuk mendaftarkan mahasiswa.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#F6F8FC] border-y border-[#E4E9F2] text-[#667085]">
-                  <tr>
-                    <th className="py-3 px-4 font-semibold">NIM</th>
-                    <th className="py-3 px-4 font-semibold">Nama Mahasiswa</th>
-                    <th className="py-3 px-4 font-semibold">Email</th>
-                    <th className="py-3 px-4 font-semibold">Program Studi</th>
-                    <th className="py-3 px-4 font-semibold">Angkatan</th>
-                    <th className="py-3 px-4 font-semibold text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E4E9F2]">
-                  {enrolledStudents.map((st) => (
-                    <tr key={st.enrollmentId} className="hover:bg-[#F6F8FC]/50 transition-colors">
-                      <td className="py-3 px-4 font-medium text-[#172033] tabular-nums">
-                        {st.studentNumber}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-[#172033]">
-                        {st.name}
-                      </td>
-                      <td className="py-3 px-4 text-[#667085]">{st.email}</td>
-                      <td className="py-3 px-4 text-[#667085]">{st.studyProgram}</td>
-                      <td className="py-3 px-4 text-[#667085] tabular-nums">{st.cohort}</td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleRemoveStudent(st.studentUserId, st.name)}
-                          className="p-1 text-[#667085] hover:text-[#C43D4B] rounded-md hover:bg-gray-100 transition-colors"
-                          title="Hapus dari kelas"
-                          disabled={isLoading}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#F6F8FC] border-y border-[#E4E9F2] text-[#667085]">
+                    <tr>
+                      <th className="py-3 px-4 font-semibold">NIM</th>
+                      <th className="py-3 px-4 font-semibold">Nama Mahasiswa</th>
+                      <th className="py-3 px-4 font-semibold">Email</th>
+                      <th className="py-3 px-4 font-semibold">Program Studi</th>
+                      <th className="py-3 px-4 font-semibold">Angkatan</th>
+                      <th className="py-3 px-4 font-semibold text-right">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#E4E9F2]">
+                    {enrolledStudents
+                      .slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize)
+                      .map((st) => (
+                      <tr key={st.enrollmentId} className="hover:bg-[#F6F8FC]/50 transition-colors">
+                        <td className="py-3 px-4 font-medium text-[#172033] tabular-nums">
+                          {st.studentNumber}
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-[#172033]">
+                          {st.name}
+                        </td>
+                        <td className="py-3 px-4 text-[#667085]">{st.email}</td>
+                        <td className="py-3 px-4 text-[#667085]">{st.studyProgram}</td>
+                        <td className="py-3 px-4 text-[#667085] tabular-nums">{st.cohort}</td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleRemoveStudent(st.studentUserId, st.name)}
+                            className="p-1 text-[#667085] hover:text-[#C43D4B] rounded-md hover:bg-gray-100 transition-colors"
+                            title="Hapus dari kelas"
+                            disabled={isLoading}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <Pagination
+                currentPage={studentPage}
+                totalPages={Math.ceil(enrolledStudents.length / studentPageSize) || 1}
+                onPageChange={setStudentPage}
+                totalItems={enrolledStudents.length}
+                pageSize={studentPageSize}
+              />
             </div>
           )}
         </Card>

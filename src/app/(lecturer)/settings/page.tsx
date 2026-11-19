@@ -12,6 +12,7 @@ import {
   Server,
   Calendar,
 } from "lucide-react";
+import { ThemeSettingsCard } from "@/components/theme/ThemeSettingsCard";
 
 export default async function SettingsPage() {
   const user = await requireLecturer();
@@ -118,6 +119,9 @@ export default async function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* UI Themes Customizer */}
+        <ThemeSettingsCard />
 
         {/* System & Storage Environment */}
         <Card className="md:col-span-2">

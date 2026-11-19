@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   FileCheck2,
   Clock,
@@ -80,6 +81,8 @@ export function AssignmentDetailClient({
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   // Grading Modal State
   const [selectedSub, setSelectedSub] = useState<StudentSubmissionRow | null>(null);
@@ -115,6 +118,12 @@ export function AssignmentDetailClient({
 
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedSubmissions = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const openGradingModal = (row: StudentSubmissionRow) => {
     setSelectedSub(row);
@@ -259,14 +268,20 @@ export function AssignmentDetailClient({
                 type="text"
                 placeholder="Cari NIM atau nama..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full rounded-lg border border-[#E4E9F2] pl-8 pr-3 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
               />
             </div>
 
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full sm:w-auto rounded-lg border border-[#E4E9F2] bg-white px-2.5 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
             >
               <option value="all">Semua Status</option>
@@ -292,7 +307,7 @@ export function AssignmentDetailClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E4E9F2]">
-                {filtered.map((st) => (
+                {paginatedSubmissions.map((st) => (
                   <tr key={st.studentUserId} className="hover:bg-[#F6F8FC]/50 transition-colors">
                     <td className="py-3 px-4 font-semibold text-[#172033] tabular-nums">
                       {st.studentNumber}
@@ -340,6 +355,14 @@ export function AssignmentDetailClient({
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+          />
         </CardContent>
       </Card>
 

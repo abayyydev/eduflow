@@ -20,6 +20,7 @@ import {
   LogOut,
   Bell,
 } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 interface LecturerLayoutProps {
   user: {
@@ -177,6 +178,8 @@ export const LecturerLayout: React.FC<LecturerLayoutProps> = ({ user, children }
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeSwitcher />
+
             <Link
               href="/notifications"
               className="p-2 rounded-lg text-[#667085] hover:bg-[#F6F8FC] hover:text-[#172033] relative transition-colors"

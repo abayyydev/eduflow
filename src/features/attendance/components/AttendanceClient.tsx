@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Plus,
   RefreshCw,
@@ -51,6 +52,8 @@ export function AttendanceClient({
   const [newTopic, setNewTopic] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [, startTransition] = useTransition();
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const isLocked = data.classInfo.gradingLockedAt !== null;
 
@@ -62,6 +65,12 @@ export function AttendanceClient({
       st.studentNumber.toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
+  const paginatedStudents = filteredStudents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,7 +281,10 @@ export function AttendanceClient({
               type="text"
               placeholder="Cari NIM atau nama..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-[#E4E9F2] pl-8 pr-3 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
             />
           </div>
@@ -336,7 +348,7 @@ export function AttendanceClient({
             </thead>
 
             <tbody className="divide-y divide-[#E4E9F2]">
-              {filteredStudents.map((st) => (
+              {paginatedStudents.map((st) => (
                 <tr key={st.studentUserId} className="hover:bg-[#F6F8FC]/50 transition-colors">
                   <td className="py-2.5 px-4 font-medium text-[#172033] sticky left-0 z-10 bg-white tabular-nums">
                     {st.studentNumber}
@@ -400,6 +412,14 @@ export function AttendanceClient({
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredStudents.length}
+          pageSize={pageSize}
+        />
       </Card>
 
       {/* Modal Buat Sesi Pertemuan */}
