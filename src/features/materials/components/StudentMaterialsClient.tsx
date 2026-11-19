@@ -2,10 +2,12 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import {
   BookOpen,
   ExternalLink,
+  ArrowLeft,
 } from "lucide-react";
 import { type MaterialItem } from "./MaterialsClient";
 
@@ -32,6 +34,17 @@ export function StudentMaterialsClient({
 
   return (
     <div className="space-y-6">
+      {/* Back to Class List Navigation */}
+      <div>
+        <Link
+          href="/student/materials"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#667085] hover:text-[#2457D6] transition-colors group mb-1"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Kembali ke Daftar Kelas</span>
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -41,10 +54,10 @@ export function StudentMaterialsClient({
             </span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#172033]">
-            Materi Pembelajaran
+            Materi: {currentClass.displayName}
           </h1>
           <p className="text-xs text-[#667085] mt-0.5">
-            {currentClass.displayName} &bull; Dosen: {currentClass.lecturerName}
+            Dosen Pengampu: {currentClass.lecturerName} &bull; Semester {currentClass.termName}
           </p>
         </div>
 
@@ -70,10 +83,10 @@ export function StudentMaterialsClient({
         <Card className="py-12 text-center">
           <BookOpen className="mx-auto h-12 w-12 text-[#667085]/40 mb-3" />
           <h3 className="text-base font-semibold text-[#172033]">
-            Belum ada materi dipublikasikan
+            Belum ada materi pembelajaran
           </h3>
           <p className="text-xs text-[#667085] mt-1 max-w-sm mx-auto">
-            Dosen belum mengunggah materi pembelajaran untuk kelas ini.
+            Dosen belum mengunggah materi perkuliahan untuk kelas ini. Periksa kembali nanti.
           </p>
         </Card>
       ) : (
@@ -81,37 +94,52 @@ export function StudentMaterialsClient({
           {materials.map((mat) => (
             <Card
               key={mat.id}
-              className="hover:border-[#2457D6]/30 transition-all flex flex-col justify-between p-5"
+              className="hover:border-[#2457D6]/30 transition-all flex flex-col justify-between"
             >
               <div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[#E8F5EF] text-[#16845B] inline-block mb-2">
-                  Pertemuan {mat.meetingNumber || "—"}
-                </span>
-
-                <h3 className="text-base font-bold text-[#172033]">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[#EEF3FF] text-[#2457D6]">
+                    Pertemuan {mat.meetingNumber || "—"}
+                  </span>
+                  <span className="text-[11px] text-[#667085]">
+                    {mat.publishedAt
+                      ? new Date(mat.publishedAt).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "Draft"}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-[#172033] mb-1">
                   {mat.title}
                 </h3>
-
                 {mat.description && (
-                  <p className="text-xs text-[#667085] mt-1.5 leading-relaxed">
+                  <p className="text-xs text-[#667085] line-clamp-2 mb-3">
                     {mat.description}
                   </p>
                 )}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#E4E9F2] flex items-center justify-between text-xs">
-                {mat.externalUrl ? (
+              <div className="pt-3 border-t border-[#E4E9F2] flex items-center justify-end gap-2">
+                {mat.externalUrl && (
                   <a
                     href={mat.externalUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 font-semibold text-[#2457D6] hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2457D6] hover:underline"
                   >
-                    <span>Akses Slide / Modul</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    Buka Tautan <ExternalLink className="w-3.5 h-3.5" />
                   </a>
-                ) : (
-                  <span className="text-[#667085] italic">Tersedia saat tatap muka</span>
+                )}
+                {mat.fileObjectKey && (
+                  <a
+                    href={`/api/files/${mat.fileObjectKey}`}
+                    download
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#16845B] hover:underline"
+                  >
+                    Unduh File
+                  </a>
                 )}
               </div>
             </Card>

@@ -5,11 +5,13 @@ import {
   learningMaterials,
   classes,
   courses,
+  academicTerms,
+  lecturers,
   enrollments,
   auditLogs,
 } from "@/server/db/schema";
-import { requireLecturer, requireUser } from "@/server/auth/session";
-import { eq, and, asc } from "drizzle-orm";
+import { requireLecturer, requireStudent, requireUser } from "@/server/auth/session";
+import { eq, and, asc, sql, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { savePrivateFile } from "@/server/storage";
@@ -22,6 +24,76 @@ const createMaterialSchema = z.object({
   description: z.string().optional(),
   externalUrl: z.string().optional(),
 });
+
+export async function getLecturerMaterialsOverview() {
+  const lecturer = await requireLecturer();
+
+  return db
+    .select({
+      id: classes.id,
+      classCode: classes.classCode,
+      displayName: classes.displayName,
+      scheduleText: classes.scheduleText,
+      status: classes.status,
+      courseId: courses.id,
+      courseCode: courses.code,
+      courseName: courses.name,
+      creditUnits: courses.creditUnits,
+      termName: academicTerms.name,
+      studentCount: sql<number>`count(distinct ${enrollments.studentId})`,
+      materialsCount: sql<number>`(select count(*) from learning_materials where learning_materials.class_id = ${classes.id})`,
+    })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
+    .leftJoin(
+      enrollments,
+      and(
+        eq(enrollments.classId, classes.id),
+        eq(enrollments.enrollmentStatus, "active")
+      )
+    )
+    .where(
+      and(
+        eq(courses.lecturerId, lecturer.userId),
+        eq(classes.status, "active"),
+        isNull(courses.archivedAt)
+      )
+    )
+    .groupBy(classes.id, courses.id, academicTerms.id)
+    .orderBy(courses.code, classes.classCode);
+}
+
+export async function getStudentMaterialsOverview() {
+  const student = await requireStudent();
+
+  return db
+    .select({
+      classId: classes.id,
+      displayName: classes.displayName,
+      classCode: classes.classCode,
+      scheduleText: classes.scheduleText,
+      courseCode: courses.code,
+      courseName: courses.name,
+      creditUnits: courses.creditUnits,
+      termName: academicTerms.name,
+      lecturerName: lecturers.name,
+      materialsCount: sql<number>`(select count(*) from learning_materials where learning_materials.class_id = ${classes.id})`,
+    })
+    .from(enrollments)
+    .innerJoin(classes, eq(enrollments.classId, classes.id))
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
+    .innerJoin(lecturers, eq(courses.lecturerId, lecturers.id))
+    .where(
+      and(
+        eq(enrollments.studentId, student.userId),
+        eq(enrollments.enrollmentStatus, "active"),
+        eq(classes.status, "active")
+      )
+    )
+    .orderBy(courses.code);
+}
 
 export async function getClassMaterials(classId: string) {
   const user = await requireUser();
@@ -125,6 +197,7 @@ export async function createMaterial(formData: FormData) {
   });
 
   revalidatePath(`/materials?classId=${classId}`);
+  revalidatePath(`/materials`);
   revalidatePath(`/classes/${classId}`);
   return { success: true, materialId: newMaterialId };
 }
@@ -153,5 +226,6 @@ export async function deleteMaterial(materialId: string) {
     .where(eq(learningMaterials.id, materialId));
 
   revalidatePath(`/materials?classId=${mat.classId}`);
+  revalidatePath(`/materials`);
   return { success: true };
 }

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
@@ -11,6 +12,7 @@ import {
   Plus,
   ExternalLink,
   Trash2,
+  ArrowLeft,
 } from "lucide-react";
 import { createMaterial, deleteMaterial } from "../actions";
 
@@ -81,6 +83,17 @@ export function MaterialsClient({
 
   return (
     <div className="space-y-6">
+      {/* Back Button & Breadcrumbs */}
+      <div>
+        <Link
+          href="/materials"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#667085] hover:text-[#2457D6] transition-colors group mb-1"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Kembali ke Daftar Kelas</span>
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -90,10 +103,10 @@ export function MaterialsClient({
             </span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#172033]">
-            Materi Pembelajaran
+            Materi: {currentClass.displayName}
           </h1>
           <p className="text-xs text-[#667085] mt-0.5">
-            {currentClass.displayName} &bull; Semester {currentClass.termName}
+            Semester {currentClass.termName} &bull; Kelola slide, modul, dan link pembelajaran
           </p>
         </div>
 
