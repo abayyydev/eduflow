@@ -98,11 +98,63 @@ export async function getClassGradebookData(classId: string): Promise<GradebookD
   }
 
   // 2. Fetch categories and items
-  const catList = await db
+  let catList = await db
     .select()
     .from(gradingCategories)
     .where(eq(gradingCategories.classId, classId))
     .orderBy(asc(gradingCategories.sortOrder));
+
+  // If no categories exist, auto-provision default academic categories & scales
+  if (catList.length === 0) {
+    const defaultCats = [
+      { name: "Tugas & Praktikum", weight: "20.00", sortOrder: 1 },
+      { name: "Presensi & Keaktifan", weight: "10.00", sortOrder: 2 },
+      { name: "Kuis & Tugas Mandiri", weight: "15.00", sortOrder: 3 },
+      { name: "Ujian Tengah Semester (UTS)", weight: "25.00", sortOrder: 4 },
+      { name: "Ujian Akhir Semester (UAS)", weight: "30.00", sortOrder: 5 },
+    ];
+
+    for (const c of defaultCats) {
+      await db.insert(gradingCategories).values({
+        id: randomUUID(),
+        classId,
+        name: c.name,
+        weightPercent: c.weight,
+        aggregationMethod: "average",
+        isRequired: false,
+        sortOrder: c.sortOrder,
+      });
+    }
+
+    const defaultScales = [
+      { letterGrade: "A", minScore: "85.00", maxScore: "100.00", gradePoint: "4.00" },
+      { letterGrade: "A-", minScore: "80.00", maxScore: "84.99", gradePoint: "3.70" },
+      { letterGrade: "B+", minScore: "75.00", maxScore: "79.99", gradePoint: "3.30" },
+      { letterGrade: "B", minScore: "70.00", maxScore: "74.99", gradePoint: "3.00" },
+      { letterGrade: "B-", minScore: "65.00", maxScore: "69.99", gradePoint: "2.70" },
+      { letterGrade: "C+", minScore: "60.00", maxScore: "64.99", gradePoint: "2.30" },
+      { letterGrade: "C", minScore: "55.00", maxScore: "59.99", gradePoint: "2.00" },
+      { letterGrade: "D", minScore: "40.00", maxScore: "54.99", gradePoint: "1.00" },
+      { letterGrade: "E", minScore: "0.00", maxScore: "39.99", gradePoint: "0.00" },
+    ];
+
+    for (const s of defaultScales) {
+      await db.insert(gradeScales).values({
+        id: randomUUID(),
+        classId,
+        letterGrade: s.letterGrade,
+        minScore: s.minScore,
+        maxScore: s.maxScore,
+        gradePoint: s.gradePoint,
+      });
+    }
+
+    catList = await db
+      .select()
+      .from(gradingCategories)
+      .where(eq(gradingCategories.classId, classId))
+      .orderBy(asc(gradingCategories.sortOrder));
+  }
 
   const catIds = catList.map((c) => c.id);
 
@@ -454,6 +506,126 @@ export async function createAssessmentItem(
 
   revalidatePath(`/gradebook?classId=${classId}`);
   return { success: true, itemId: newItemId };
+}
+
+export async function deleteAssessmentItem(classId: string, assessmentItemId: string) {
+  const lecturer = await requireLecturer();
+
+  const [cls] = await db
+    .select({
+      id: classes.id,
+      gradingLockedAt: classes.gradingLockedAt,
+      ownerUserId: courses.lecturerId,
+    })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(classes.id, classId))
+    .limit(1);
+
+  if (!cls || cls.ownerUserId !== lecturer.userId) {
+    return { error: "Akses ditolak" };
+  }
+
+  if (cls.gradingLockedAt !== null) {
+    return { error: "Nilai kelas ini telah dikunci." };
+  }
+
+  // Delete grades for this assessment item
+  await db.delete(grades).where(eq(grades.assessmentItemId, assessmentItemId));
+
+  // Delete assessment item
+  await db.delete(assessmentItems).where(eq(assessmentItems.id, assessmentItemId));
+
+  await db.insert(auditLogs).values({
+    id: randomUUID(),
+    actorUserId: lecturer.userId,
+    entityType: "assessment_items",
+    entityId: assessmentItemId,
+    action: "delete_assessment_item",
+    afterData: { classId },
+  });
+
+  revalidatePath(`/gradebook?classId=${classId}`);
+  return { success: true };
+}
+
+export async function createGradingCategory(
+  classId: string,
+  name: string,
+  weightPercent: number
+) {
+  const lecturer = await requireLecturer();
+
+  const [cls] = await db
+    .select({
+      id: classes.id,
+      gradingLockedAt: classes.gradingLockedAt,
+      ownerUserId: courses.lecturerId,
+    })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(classes.id, classId))
+    .limit(1);
+
+  if (!cls || cls.ownerUserId !== lecturer.userId) {
+    return { error: "Akses ditolak" };
+  }
+
+  if (cls.gradingLockedAt !== null) {
+    return { error: "Nilai kelas telah dikunci." };
+  }
+
+  const newCatId = randomUUID();
+  await db.insert(gradingCategories).values({
+    id: newCatId,
+    classId,
+    name: name.trim(),
+    weightPercent: weightPercent.toFixed(2),
+    aggregationMethod: "average",
+    isRequired: false,
+    sortOrder: 10,
+  });
+
+  revalidatePath(`/gradebook?classId=${classId}`);
+  return { success: true, categoryId: newCatId };
+}
+
+export async function deleteGradingCategory(classId: string, categoryId: string) {
+  const lecturer = await requireLecturer();
+
+  const [cls] = await db
+    .select({
+      id: classes.id,
+      gradingLockedAt: classes.gradingLockedAt,
+      ownerUserId: courses.lecturerId,
+    })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(classes.id, classId))
+    .limit(1);
+
+  if (!cls || cls.ownerUserId !== lecturer.userId) {
+    return { error: "Akses ditolak" };
+  }
+
+  if (cls.gradingLockedAt !== null) {
+    return { error: "Nilai kelas telah dikunci." };
+  }
+
+  // Get items in category
+  const items = await db
+    .select({ id: assessmentItems.id })
+    .from(assessmentItems)
+    .where(eq(assessmentItems.categoryId, categoryId));
+
+  for (const it of items) {
+    await db.delete(grades).where(eq(grades.assessmentItemId, it.id));
+  }
+  await db.delete(assessmentItems).where(eq(assessmentItems.categoryId, categoryId));
+  await db.delete(gradingCategories).where(eq(gradingCategories.id, categoryId));
+
+  revalidatePath(`/gradebook?classId=${classId}`);
+  return { success: true };
 }
 
 export async function updateCategoryWeights(
