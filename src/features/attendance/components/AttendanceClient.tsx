@@ -14,6 +14,7 @@ import {
   Users,
   Calendar,
   TrendingUp,
+  Download,
 } from "lucide-react";
 import {
   type AttendanceOverviewData,
@@ -174,6 +175,23 @@ export function AttendanceClient({
           >
             <RefreshCw className="w-4 h-4 mr-1.5" /> Sinkronkan ke Gradebook
           </Button>
+
+          <a
+            href={`/api/export/attendance?classId=${data.classInfo.id}&format=xlsx`}
+            download
+            className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E4E9F2] text-[#172033] hover:bg-[#F6F8FC] shadow-2xs transition-colors"
+          >
+            <Download className="w-3.5 h-3.5 mr-1 text-[#16845B]" />
+            Ekspor XLSX
+          </a>
+
+          <a
+            href={`/api/export/attendance?classId=${data.classInfo.id}&format=csv`}
+            download
+            className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E4E9F2] text-[#667085] hover:bg-[#F6F8FC] shadow-2xs transition-colors"
+          >
+            Ekspor CSV
+          </a>
         </div>
       </div>
 

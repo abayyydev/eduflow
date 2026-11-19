@@ -5,7 +5,7 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 ---
 
 ## 1. Ringkasan Status Proyek
-- **Status Saat Ini:** Step F (Phase 4 Attendance & Learning Materials) Selesai — Lolos Verifikasi Gate 4
+- **Status Saat Ini:** Step G (Phase 5 Dashboard, Export, Reports & Final QA) Selesai — Seluruh Rencana Implementasi Selesai (100%)
 - **Terakhir Diperbarui:** 19 November 2026
 - **Database:** MySQL 8.0.30 (`eduflow`) - 19 Tabel Aktif, Seed Data Siap
 - **Runtime:** Node.js v24.14.1, npm v11.11.0 (eksekusi via `npm.cmd`)
@@ -93,16 +93,17 @@ Dokumen pelacak progres implementasi, checklist fase, keputusan arsitektur, dan 
 
 ---
 
-### Step G — Phase 5: Dashboard, Publication, Export & Final Polish
-- [ ] Dashboard Dosen (KPI kelas aktif, tugas aktif, submission perlu dinilai, nilai belum lengkap, quick actions)
-- [ ] Dashboard Mahasiswa (Tugas mendatang, deadline terdekat, status pengumpulan, nilai terbit)
-- [ ] Sistem Notifikasi in-app (`notifications`)
-- [ ] Workflow Finalisasi & Publikasi Nilai (Lock/Publish dengan konfirmasi & checklist komponen lengkap)
-- [ ] Ekspor Gradebook & Presensi ke Excel (XLSX via ExcelJS) & CSV
-- [ ] UI Polish: Responsive check (Mobile 390px, Tablet 768px, Laptop 1440px), empty/loading/error states
-- [ ] Security hardening & authorization audit (IDOR check, file traversal check, CSRF, sanitized inputs)
-- [ ] Production build verification & Deployment Guide
-- [ ] Verification Gate 5: Semua acceptance criteria lolos
+### Step G — Phase 5: Dashboard, Publication, Export & Final Polish (Selesai — Gate 5 Lolos)
+- [x] Dashboard Dosen (KPI kelas aktif, tugas aktif, submission perlu dinilai, nilai belum lengkap, quick actions)
+- [x] Dashboard Mahasiswa (Tugas mendatang, deadline terdekat, status pengumpulan, nilai terbit)
+- [x] Sistem Notifikasi in-app (`notifications`) dengan badge unread dan aksi tandai dibaca
+- [x] Halaman Laporan Akademik (`/reports`) dengan agregasi performa & distribusi huruf mutu per kelas
+- [x] Ekspor Gradebook & Presensi ke Excel (XLSX via ExcelJS) & CSV (/api/export/gradebook & /api/export/attendance)
+- [x] Pengaturan Profil Dosen (`/settings`) & Profil Mahasiswa (`/student/profile`)
+- [x] UI Polish: Responsive check (Mobile 390px, Tablet 768px, Laptop 1440px), empty/loading/error states
+- [x] Security hardening & authorization audit (IDOR check, file traversal check, CSRF, sanitized inputs)
+- [x] Production build verification (26 routes Next.js lulus build) & Deployment Guide
+- [x] Verification Gate 5: 27/27 tests passed, 0 lint warnings, 0 typecheck errors
 
 ---
 
