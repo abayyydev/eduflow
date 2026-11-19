@@ -8,6 +8,7 @@ import {
   Home,
   GraduationCap,
   FileCheck2,
+  BookOpen,
   Award,
   User,
   LogOut,
@@ -28,6 +29,7 @@ interface StudentLayoutProps {
 const navItems = [
   { label: "Beranda", href: "/student/dashboard", icon: Home },
   { label: "Kelas Saya", href: "/student/classes", icon: GraduationCap },
+  { label: "Materi", href: "/student/materials", icon: BookOpen },
   { label: "Tugas", href: "/student/assignments", icon: FileCheck2 },
   { label: "Nilai Saya", href: "/student/grades", icon: Award },
   { label: "Profil", href: "/student/profile", icon: User },
