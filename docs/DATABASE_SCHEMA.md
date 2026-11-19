@@ -14,36 +14,47 @@ Baseline relasional. Gunakan InnoDB, `utf8mb4`, foreign key, timestamp, dan inde
 
 ## 2. Tabel
 
-### users
+### users (Admin & Superadmin)
 | Kolom | Tipe | Catatan |
 |---|---|---|
 | id | CHAR(36) PK | UUID |
 | name | VARCHAR(150) | Nama |
-| email | VARCHAR(190) UNIQUE | Login |
+| email | VARCHAR(190) UNIQUE | Login Admin |
 | password_hash | VARCHAR(255) | Hash |
-| role | ENUM('lecturer','student') | Peran |
+| role | ENUM('admin','superadmin') | Khusus Admin / Superadmin |
 | is_active | BOOLEAN | Default true |
 | last_login_at | DATETIME NULL | |
 | created_at / updated_at | DATETIME | |
 
-### lecturer_profiles
+### lecturers (Dosen)
 | Kolom | Tipe | Catatan |
 |---|---|---|
-| id | CHAR(36) PK | |
-| user_id | CHAR(36) FK UNIQUE | users |
-| lecturer_number | VARCHAR(50) NULL | NIDN/NIDK opsional |
-| institution_name | VARCHAR(180) NULL | |
-| phone | VARCHAR(30) NULL | |
+| id | CHAR(36) PK | UUID |
+| name | VARCHAR(150) | Nama Dosen Lengkap |
+| email | VARCHAR(190) UNIQUE | Login Dosen |
+| password_hash | VARCHAR(255) | Hash |
+| nip | VARCHAR(50) UNIQUE | NIP / NIDN |
+| academic_title | VARCHAR(100) NULL | Gelar Akademik |
+| institution_name | VARCHAR(180) NULL | Nama Kampus / Universitas |
+| phone | VARCHAR(30) NULL | Nomor Telepon |
+| is_active | BOOLEAN | Default true |
+| last_login_at | DATETIME NULL | |
+| created_at / updated_at | DATETIME | |
 
-### student_profiles
+### students (Mahasiswa)
 | Kolom | Tipe | Catatan |
 |---|---|---|
-| id | CHAR(36) PK | |
-| user_id | CHAR(36) FK UNIQUE | users |
-| student_number | VARCHAR(50) | NIM |
-| study_program | VARCHAR(150) NULL | |
-| cohort | VARCHAR(30) NULL | |
-| phone | VARCHAR(30) NULL | |
+| id | CHAR(36) PK | UUID |
+| name | VARCHAR(150) | Nama Mahasiswa Lengkap |
+| email | VARCHAR(190) UNIQUE | Login Mahasiswa |
+| password_hash | VARCHAR(255) | Hash |
+| student_number | VARCHAR(50) UNIQUE | NIM (Nomor Induk Mahasiswa) |
+| study_program | VARCHAR(150) NULL | Program Studi |
+| cohort | VARCHAR(30) NULL | Tahun Angkatan |
+| phone | VARCHAR(30) NULL | Nomor Telepon |
+| is_active | BOOLEAN | Default true |
+| last_login_at | DATETIME NULL | |
+| created_at / updated_at | DATETIME | |
 
 ### academic_terms
 | Kolom | Tipe | Catatan |

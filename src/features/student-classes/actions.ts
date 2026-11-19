@@ -6,7 +6,7 @@ import {
   courses,
   academicTerms,
   enrollments,
-  users,
+  lecturers,
   learningMaterials,
   assignments,
 } from "@/server/db/schema";
@@ -27,16 +27,16 @@ export async function getStudentEnrolledClasses() {
       courseName: courses.name,
       creditUnits: courses.creditUnits,
       termName: academicTerms.name,
-      lecturerName: users.name,
+      lecturerName: lecturers.name,
     })
     .from(enrollments)
     .innerJoin(classes, eq(enrollments.classId, classes.id))
     .innerJoin(courses, eq(classes.courseId, courses.id))
     .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
-    .innerJoin(users, eq(courses.ownerUserId, users.id))
+    .innerJoin(lecturers, eq(courses.lecturerId, lecturers.id))
     .where(
       and(
-        eq(enrollments.studentUserId, student.userId),
+        eq(enrollments.studentId, student.userId),
         eq(enrollments.enrollmentStatus, "active"),
         eq(classes.status, "active")
       )
@@ -54,7 +54,7 @@ export async function getStudentClassDetail(classId: string) {
     .where(
       and(
         eq(enrollments.classId, classId),
-        eq(enrollments.studentUserId, student.userId),
+        eq(enrollments.studentId, student.userId),
         eq(enrollments.enrollmentStatus, "active")
       )
     )
@@ -76,13 +76,13 @@ export async function getStudentClassDetail(classId: string) {
       courseDescription: courses.description,
       creditUnits: courses.creditUnits,
       termName: academicTerms.name,
-      lecturerName: users.name,
-      lecturerEmail: users.email,
+      lecturerName: lecturers.name,
+      lecturerEmail: lecturers.email,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
     .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
-    .innerJoin(users, eq(courses.ownerUserId, users.id))
+    .innerJoin(lecturers, eq(courses.lecturerId, lecturers.id))
     .where(eq(classes.id, classId))
     .limit(1);
 
@@ -100,10 +100,10 @@ export async function getStudentClassDetail(classId: string) {
     .select({
       id: assignments.id,
       title: assignments.title,
+      instructions: assignments.instructions,
       dueAt: assignments.dueAt,
-      maxScore: assignments.maxScore,
       submissionMode: assignments.submissionMode,
-      status: assignments.status,
+      maxScore: assignments.maxScore,
     })
     .from(assignments)
     .where(

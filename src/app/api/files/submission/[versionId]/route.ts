@@ -28,8 +28,8 @@ export async function GET(
       id: submissionVersions.id,
       fileObjectKey: submissionVersions.fileObjectKey,
       originalFilename: submissionVersions.originalFilename,
-      studentUserId: submissions.studentUserId,
-      ownerUserId: courses.ownerUserId,
+      studentUserId: submissions.studentId,
+      ownerUserId: courses.lecturerId,
     })
     .from(submissionVersions)
     .innerJoin(submissions, eq(submissionVersions.submissionId, submissions.id))

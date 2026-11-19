@@ -8,7 +8,7 @@ import {
   submissions,
   submissionVersions,
   courses,
-  users,
+  lecturers,
 } from "@/server/db/schema";
 import { requireStudent } from "@/server/auth/session";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -35,12 +35,12 @@ export async function getStudentAssignmentDetail(assignmentId: string) {
       classId: classes.id,
       classDisplayName: classes.displayName,
       courseCode: courses.code,
-      lecturerName: users.name,
+      lecturerName: lecturers.name,
     })
     .from(assignments)
     .innerJoin(classes, eq(assignments.classId, classes.id))
     .innerJoin(courses, eq(classes.courseId, courses.id))
-    .innerJoin(users, eq(courses.ownerUserId, users.id))
+    .innerJoin(lecturers, eq(courses.lecturerId, lecturers.id))
     .where(
       and(
         eq(assignments.id, assignmentId),
@@ -58,7 +58,7 @@ export async function getStudentAssignmentDetail(assignmentId: string) {
     .where(
       and(
         eq(enrollments.classId, assignment.classId),
-        eq(enrollments.studentUserId, student.userId),
+        eq(enrollments.studentId, student.userId),
         eq(enrollments.enrollmentStatus, "active")
       )
     )
@@ -75,7 +75,7 @@ export async function getStudentAssignmentDetail(assignmentId: string) {
     .where(
       and(
         eq(submissions.assignmentId, assignmentId),
-        eq(submissions.studentUserId, student.userId)
+        eq(submissions.studentId, student.userId)
       )
     )
     .limit(1);
@@ -105,7 +105,7 @@ export async function getStudentAssignmentsList() {
     .from(enrollments)
     .where(
       and(
-        eq(enrollments.studentUserId, student.userId),
+        eq(enrollments.studentId, student.userId),
         eq(enrollments.enrollmentStatus, "active")
       )
     );
@@ -134,7 +134,7 @@ export async function getStudentAssignmentsList() {
       submissions,
       and(
         eq(submissions.assignmentId, assignments.id),
-        eq(submissions.studentUserId, student.userId)
+        eq(submissions.studentId, student.userId)
       )
     )
     .where(
@@ -253,7 +253,7 @@ export async function submitStudentAssignment(formData: FormData) {
     await db.insert(submissions).values({
       id: submissionId,
       assignmentId,
-      studentUserId: student.userId,
+      studentId: student.userId,
       status: finalStatus,
       submittedAt: isDraft ? null : now,
       currentVersion: 1,

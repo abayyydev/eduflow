@@ -10,7 +10,7 @@ import {
   assessmentItems,
   grades,
   gradeScales,
-  users,
+  lecturers,
 } from "@/server/db/schema";
 import { requireStudent } from "@/server/auth/session";
 import { eq, and, sql, desc, asc } from "drizzle-orm";
@@ -56,16 +56,16 @@ export async function getStudentGradesOverview(): Promise<StudentClassGradeSumma
       courseName: courses.name,
       creditUnits: courses.creditUnits,
       termName: academicTerms.name,
-      lecturerName: users.name,
+      lecturerName: lecturers.name,
     })
     .from(enrollments)
     .innerJoin(classes, eq(enrollments.classId, classes.id))
     .innerJoin(courses, eq(classes.courseId, courses.id))
     .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
-    .innerJoin(users, eq(courses.ownerUserId, users.id))
+    .innerJoin(lecturers, eq(courses.lecturerId, lecturers.id))
     .where(
       and(
-        eq(enrollments.studentUserId, student.userId),
+        eq(enrollments.studentId, student.userId),
         eq(enrollments.enrollmentStatus, "active"),
         eq(classes.status, "active")
       )
@@ -110,7 +110,7 @@ export async function getStudentGradesOverview(): Promise<StudentClassGradeSumma
             .from(grades)
             .where(
               and(
-                eq(grades.studentUserId, student.userId),
+                eq(grades.studentId, student.userId),
                 sql`${grades.assessmentItemId} IN (${sql.join(
                   itemIds.map((id) => sql`${id}`),
                   sql`, `

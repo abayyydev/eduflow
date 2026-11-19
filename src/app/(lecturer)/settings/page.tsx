@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   const [coursesCount] = await db
     .select({ count: sql<number>`count(*)` })
     .from(courses)
-    .where(eq(courses.ownerUserId, user.userId));
+    .where(eq(courses.lecturerId, user.userId));
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

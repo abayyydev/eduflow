@@ -6,8 +6,7 @@ import {
   courses,
   academicTerms,
   enrollments,
-  users,
-  studentProfiles,
+  students,
   gradingCategories,
   assessmentItems,
   grades,
@@ -85,7 +84,7 @@ export async function getClassGradebookData(classId: string): Promise<GradebookD
       gradesPublishedAt: classes.gradesPublishedAt,
       courseCode: courses.code,
       courseName: courses.name,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
       termName: academicTerms.name,
     })
     .from(classes)
@@ -159,20 +158,19 @@ export async function getClassGradebookData(classId: string): Promise<GradebookD
   // 4. Fetch enrolled students
   const enrolledStudents = await db
     .select({
-      studentUserId: users.id,
-      name: users.name,
-      studentNumber: studentProfiles.studentNumber,
+      studentUserId: students.id,
+      name: students.name,
+      studentNumber: students.studentNumber,
     })
     .from(enrollments)
-    .innerJoin(users, eq(enrollments.studentUserId, users.id))
-    .innerJoin(studentProfiles, eq(users.id, studentProfiles.userId))
+    .innerJoin(students, eq(enrollments.studentId, students.id))
     .where(
       and(
         eq(enrollments.classId, classId),
         eq(enrollments.enrollmentStatus, "active")
       )
     )
-    .orderBy(asc(studentProfiles.studentNumber));
+    .orderBy(asc(students.studentNumber));
 
   // 5. Fetch all grades for this class's assessment items
   const allItemIds = itemList.map((it) => it.id);
@@ -189,10 +187,10 @@ export async function getClassGradebookData(classId: string): Promise<GradebookD
           )
       : [];
 
-  // Map grades by studentUserId:itemId
+  // Map grades by studentId:itemId
   const gradesMap = new Map<string, typeof gradesList[0]>();
   for (const g of gradesList) {
-    gradesMap.set(`${g.studentUserId}:${g.assessmentItemId}`, g);
+    gradesMap.set(`${g.studentId}:${g.assessmentItemId}`, g);
   }
 
   // 6. Calculate for each student
@@ -309,7 +307,7 @@ export async function updateGradeScore(
     .select({
       id: classes.id,
       gradingLockedAt: classes.gradingLockedAt,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
@@ -352,7 +350,7 @@ export async function updateGradeScore(
     .where(
       and(
         eq(grades.assessmentItemId, assessmentItemId),
-        eq(grades.studentUserId, studentUserId)
+        eq(grades.studentId, studentUserId)
       )
     )
     .limit(1);
@@ -382,7 +380,7 @@ export async function updateGradeScore(
     await db.insert(grades).values({
       id: newGradeId,
       assessmentItemId,
-      studentUserId,
+      studentId: studentUserId,
       score: scoreFormatted,
       gradedBy: lecturer.userId,
       gradedAt: scoreFormatted !== null ? new Date() : null,
@@ -416,7 +414,7 @@ export async function createAssessmentItem(
     .select({
       id: classes.id,
       gradingLockedAt: classes.gradingLockedAt,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
@@ -468,7 +466,7 @@ export async function updateCategoryWeights(
     .select({
       id: classes.id,
       gradingLockedAt: classes.gradingLockedAt,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
@@ -521,7 +519,7 @@ export async function toggleLockGrades(classId: string, shouldLock: boolean) {
       id: classes.id,
       displayName: classes.displayName,
       gradingLockedAt: classes.gradingLockedAt,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
@@ -589,7 +587,7 @@ export async function togglePublishGrades(classId: string, shouldPublish: boolea
       id: classes.id,
       displayName: classes.displayName,
       gradesPublishedAt: classes.gradesPublishedAt,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
@@ -610,7 +608,7 @@ export async function togglePublishGrades(classId: string, shouldPublish: boolea
   // If publishing, send in-app notification to all enrolled students
   if (shouldPublish) {
     const enrolledStudents = await db
-      .select({ studentUserId: enrollments.studentUserId })
+      .select({ studentUserId: enrollments.studentId })
       .from(enrollments)
       .where(
         and(

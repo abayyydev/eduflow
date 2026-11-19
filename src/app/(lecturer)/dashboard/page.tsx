@@ -25,7 +25,7 @@ export default async function LecturerDashboardPage() {
     .where(eq(classes.status, "active"));
 
   const [studentCountResult] = await db
-    .select({ count: sql<number>`count(distinct ${enrollments.studentUserId})` })
+    .select({ count: sql<number>`count(distinct ${enrollments.studentId})` })
     .from(enrollments);
 
   const [assignmentCountResult] = await db

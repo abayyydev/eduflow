@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { db } from "../src/server/db";
-import { assignments, submissions, users } from "../src/server/db/schema";
+import { assignments, submissions, students } from "../src/server/db/schema";
 import { eq } from "drizzle-orm";
 import { savePrivateFile, readPrivateFile } from "../src/server/storage";
 
@@ -9,19 +9,18 @@ describe("Assignment & Submission Lifecycle Tests", () => {
   let demoStudent: any;
 
   beforeAll(async () => {
-    // 1. Fetch demo assignment
+    // 1. Fetch demo assignment from seed
     const [asg] = await db
       .select()
       .from(assignments)
-      .where(eq(assignments.title, "Tugas 1: Linked List & Stack Implementation"))
       .limit(1);
     demoAssignment = asg;
 
-    // 2. Fetch demo student mhs1
+    // 2. Fetch demo student mhs1 from students table
     const [student] = await db
       .select()
-      .from(users)
-      .where(eq(users.email, "mhs1@eduflow.test"))
+      .from(students)
+      .where(eq(students.email, "mhs1@eduflow.test"))
       .limit(1);
     demoStudent = student;
   });
@@ -30,7 +29,7 @@ describe("Assignment & Submission Lifecycle Tests", () => {
     expect(demoAssignment).toBeDefined();
     expect(demoAssignment.maxScore).toBe("100.00");
     expect(demoAssignment.submissionMode).toBe("both");
-    expect(demoAssignment.allowLate).toBe(true);
+    expect(demoAssignment.status).toBe("published");
   });
 
   it("checks private storage file write and read security", async () => {

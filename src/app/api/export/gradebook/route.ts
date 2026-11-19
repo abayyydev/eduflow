@@ -5,7 +5,7 @@ import {
   classes,
   courses,
   academicTerms,
-  users,
+  lecturers,
 } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 import { getClassGradebookData } from "@/features/gradebook/actions";
@@ -31,13 +31,13 @@ export async function GET(request: NextRequest) {
         courseCode: courses.code,
         courseName: courses.name,
         termName: academicTerms.name,
-        ownerUserId: courses.ownerUserId,
-        lecturerName: users.name,
+        ownerUserId: courses.lecturerId,
+        lecturerName: lecturers.name,
       })
       .from(classes)
       .innerJoin(courses, eq(classes.courseId, courses.id))
       .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
-      .innerJoin(users, eq(courses.ownerUserId, users.id))
+      .innerJoin(lecturers, eq(courses.lecturerId, lecturers.id))
       .where(eq(classes.id, classId))
       .limit(1);
 

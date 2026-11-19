@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { db } from "../src/server/db";
-import { users, courses, classes, enrollments } from "../src/server/db/schema";
+import { lecturers, students, courses, classes, enrollments } from "../src/server/db/schema";
 import { eq, and } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../src/server/auth/session";
 
@@ -12,11 +12,10 @@ describe("Academic Structure & Multi-User Isolation Tests", () => {
   let testClass2: any;
 
   beforeAll(async () => {
-    // 1. Fetch lecturer
+    // 1. Fetch lecturer from lecturers table
     const [lecturer] = await db
       .select()
-      .from(users)
-      .where(eq(users.role, "lecturer"))
+      .from(lecturers)
       .limit(1);
     lecturerUser = lecturer;
 
@@ -36,19 +35,19 @@ describe("Academic Structure & Multi-User Isolation Tests", () => {
       .limit(1);
     testClass2 = c2;
 
-    // 4. Fetch mhs1 (enrolled in Class 1)
+    // 4. Fetch mhs1 (enrolled in Class 1) from students table
     const [m1] = await db
       .select()
-      .from(users)
-      .where(eq(users.email, "mhs1@eduflow.test"))
+      .from(students)
+      .where(eq(students.email, "mhs1@eduflow.test"))
       .limit(1);
     enrolledStudent = m1;
 
-    // 5. Fetch mhs15 (enrolled in Class 2, NOT in Class 1)
+    // 5. Fetch mhs15 (enrolled in Class 2, NOT in Class 1) from students table
     const [m15] = await db
       .select()
-      .from(users)
-      .where(eq(users.email, "mhs15@eduflow.test"))
+      .from(students)
+      .where(eq(students.email, "mhs15@eduflow.test"))
       .limit(1);
     nonEnrolledStudent = m15;
   });
@@ -73,13 +72,13 @@ describe("Academic Structure & Multi-User Isolation Tests", () => {
       .where(
         and(
           eq(enrollments.classId, testClass1.id),
-          eq(enrollments.studentUserId, enrolledStudent.id),
+          eq(enrollments.studentId, enrolledStudent.id),
           eq(enrollments.enrollmentStatus, "active")
         )
       );
 
     expect(enrollment).toBeDefined();
-    expect(enrollment.studentUserId).toBe(enrolledStudent.id);
+    expect(enrollment.studentId).toBe(enrolledStudent.id);
   });
 
   it("ensures student B is NOT enrolled in Class 1 (Multi-User Isolation)", async () => {
@@ -89,7 +88,7 @@ describe("Academic Structure & Multi-User Isolation Tests", () => {
       .where(
         and(
           eq(enrollments.classId, testClass1.id),
-          eq(enrollments.studentUserId, nonEnrolledStudent.id),
+          eq(enrollments.studentId, nonEnrolledStudent.id),
           eq(enrollments.enrollmentStatus, "active")
         )
       );
@@ -101,10 +100,10 @@ describe("Academic Structure & Multi-User Isolation Tests", () => {
     const [course] = await db
       .select()
       .from(courses)
-      .where(eq(courses.ownerUserId, lecturerUser.id))
+      .where(eq(courses.lecturerId, lecturerUser.id))
       .limit(1);
 
     expect(course).toBeDefined();
-    expect(course.ownerUserId).toBe(lecturerUser.id);
+    expect(course.lecturerId).toBe(lecturerUser.id);
   });
 });

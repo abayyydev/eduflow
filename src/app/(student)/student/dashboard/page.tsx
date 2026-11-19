@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/server/auth/session";
 import { db } from "@/server/db";
-import { enrollments, classes, assignments, studentProfiles } from "@/server/db/schema";
+import { enrollments, classes, assignments, students } from "@/server/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +18,8 @@ export default async function StudentDashboardPage() {
 
   const [profile] = await db
     .select()
-    .from(studentProfiles)
-    .where(eq(studentProfiles.userId, user!.userId))
+    .from(students)
+    .where(eq(students.id, user!.userId))
     .limit(1);
 
   // Get enrolled classes
@@ -35,7 +35,7 @@ export default async function StudentDashboardPage() {
     .innerJoin(classes, eq(enrollments.classId, classes.id))
     .where(
       and(
-        eq(enrollments.studentUserId, user!.userId),
+        eq(enrollments.studentId, user!.userId),
         eq(enrollments.enrollmentStatus, "active")
       )
     );

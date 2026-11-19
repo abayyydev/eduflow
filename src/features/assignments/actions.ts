@@ -6,8 +6,7 @@ import {
   classes,
   courses,
   enrollments,
-  users,
-  studentProfiles,
+  students,
   submissions,
   submissionVersions,
   assessmentItems,
@@ -41,10 +40,10 @@ export async function getLecturerAssignments(classIdFilter?: string) {
 
   const whereClause = classIdFilter
     ? and(
-        eq(courses.ownerUserId, lecturer.userId),
+        eq(courses.lecturerId, lecturer.userId),
         eq(assignments.classId, classIdFilter)
       )
-    : eq(courses.ownerUserId, lecturer.userId);
+    : eq(courses.lecturerId, lecturer.userId);
 
   const list = await db
     .select({
@@ -97,7 +96,7 @@ export async function getAssignmentDetail(assignmentId: string) {
       classCode: classes.classCode,
       courseCode: courses.code,
       courseName: courses.name,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(assignments)
     .innerJoin(classes, eq(assignments.classId, classes.id))
@@ -126,27 +125,26 @@ export async function getAssignmentSubmissionsList(assignmentId: string) {
   // Get all enrolled students for the class
   const enrolledStudents = await db
     .select({
-      studentUserId: users.id,
-      name: users.name,
-      email: users.email,
-      studentNumber: studentProfiles.studentNumber,
+      studentUserId: students.id,
+      name: students.name,
+      email: students.email,
+      studentNumber: students.studentNumber,
     })
     .from(enrollments)
-    .innerJoin(users, eq(enrollments.studentUserId, users.id))
-    .innerJoin(studentProfiles, eq(users.id, studentProfiles.userId))
+    .innerJoin(students, eq(enrollments.studentId, students.id))
     .where(
       and(
         eq(enrollments.classId, assignment.classId),
         eq(enrollments.enrollmentStatus, "active")
       )
     )
-    .orderBy(studentProfiles.studentNumber);
+    .orderBy(students.studentNumber);
 
   // Get all submissions for this assignment
   const subList = await db
     .select({
       id: submissions.id,
-      studentUserId: submissions.studentUserId,
+      studentUserId: submissions.studentId,
       status: submissions.status,
       submittedAt: submissions.submittedAt,
       currentVersion: submissions.currentVersion,
@@ -252,7 +250,7 @@ export async function createAssignment(formData: FormData) {
 
   // Check class ownership
   const [cls] = await db
-    .select({ ownerUserId: courses.ownerUserId })
+    .select({ ownerUserId: courses.lecturerId })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
     .where(eq(classes.id, classId))
@@ -344,12 +342,12 @@ export async function gradeSubmission(
     .select({
       id: submissions.id,
       assignmentId: submissions.assignmentId,
-      studentUserId: submissions.studentUserId,
+      studentUserId: submissions.studentId,
       currentScore: submissions.score,
       maxScore: assignments.maxScore,
       assessmentItemId: assignments.assessmentItemId,
       assignmentTitle: assignments.title,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(submissions)
     .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
@@ -397,7 +395,7 @@ export async function gradeSubmission(
       .where(
         and(
           eq(grades.assessmentItemId, sub.assessmentItemId),
-          eq(grades.studentUserId, sub.studentUserId)
+          eq(grades.studentId, sub.studentUserId)
         )
       )
       .limit(1);
@@ -416,7 +414,7 @@ export async function gradeSubmission(
       await db.insert(grades).values({
         id: randomUUID(),
         assessmentItemId: sub.assessmentItemId,
-        studentUserId: sub.studentUserId,
+        studentId: sub.studentUserId,
         score: scoreFormatted,
         feedback: feedback?.trim() || null,
         gradedBy: lecturer.userId,

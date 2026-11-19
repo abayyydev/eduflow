@@ -57,7 +57,7 @@ export async function getLecturerCourses() {
     .from(courses)
     .where(
       and(
-        eq(courses.ownerUserId, lecturer.userId),
+        eq(courses.lecturerId, lecturer.userId),
         isNull(courses.archivedAt)
       )
     )
@@ -89,7 +89,7 @@ export async function createCourse(formData: FormData) {
     name: name.trim(),
     description: description?.trim() || null,
     creditUnits: creditUnits || 3,
-    ownerUserId: lecturer.userId,
+    lecturerId: lecturer.userId,
   });
 
   revalidatePath("/classes");
@@ -114,7 +114,7 @@ export async function getLecturerClasses(statusFilter: "active" | "archived" = "
       creditUnits: courses.creditUnits,
       termId: academicTerms.id,
       termName: academicTerms.name,
-      studentCount: sql<number>`count(distinct ${enrollments.studentUserId})`,
+      studentCount: sql<number>`count(distinct ${enrollments.studentId})`,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
@@ -128,7 +128,7 @@ export async function getLecturerClasses(statusFilter: "active" | "archived" = "
     )
     .where(
       and(
-        eq(courses.ownerUserId, lecturer.userId),
+        eq(courses.lecturerId, lecturer.userId),
         eq(classes.status, statusFilter)
       )
     )
@@ -155,7 +155,8 @@ export async function getClassDetail(classId: string) {
       courseName: courses.name,
       courseDescription: courses.description,
       creditUnits: courses.creditUnits,
-      ownerUserId: courses.ownerUserId,
+      lecturerId: courses.lecturerId,
+      ownerUserId: courses.lecturerId,
       termId: academicTerms.id,
       termName: academicTerms.name,
     })
@@ -169,7 +170,7 @@ export async function getClassDetail(classId: string) {
 
   // Multi-user authorization check
   if (user.role === "lecturer") {
-    if (classData.ownerUserId !== user.userId) {
+    if (classData.lecturerId !== user.userId) {
       throw new Error("FORBIDDEN_NOT_CLASS_OWNER");
     }
   } else {
@@ -180,7 +181,7 @@ export async function getClassDetail(classId: string) {
       .where(
         and(
           eq(enrollments.classId, classId),
-          eq(enrollments.studentUserId, user.userId),
+          eq(enrollments.studentId, user.userId),
           eq(enrollments.enrollmentStatus, "active")
         )
       )
@@ -216,7 +217,7 @@ export async function createClass(formData: FormData) {
   const [course] = await db
     .select()
     .from(courses)
-    .where(and(eq(courses.id, courseId), eq(courses.ownerUserId, lecturer.userId)))
+    .where(and(eq(courses.id, courseId), eq(courses.lecturerId, lecturer.userId)))
     .limit(1);
 
   if (!course) {
@@ -295,7 +296,7 @@ export async function archiveClass(classId: string) {
   const lecturer = await requireLecturer();
 
   const classData = await getClassDetail(classId);
-  if (!classData || classData.ownerUserId !== lecturer.userId) {
+  if (!classData || classData.lecturerId !== lecturer.userId) {
     return { error: "Kelas tidak ditemukan atau tidak memiliki akses" };
   }
 

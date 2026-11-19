@@ -29,7 +29,7 @@ export async function getClassMaterials(classId: string) {
   // Verify access
   if (user.role === "lecturer") {
     const [cls] = await db
-      .select({ ownerUserId: courses.ownerUserId })
+      .select({ ownerUserId: courses.lecturerId })
       .from(classes)
       .innerJoin(courses, eq(classes.courseId, courses.id))
       .where(eq(classes.id, classId))
@@ -45,7 +45,7 @@ export async function getClassMaterials(classId: string) {
       .where(
         and(
           eq(enrollments.classId, classId),
-          eq(enrollments.studentUserId, user.userId),
+          eq(enrollments.studentId, user.userId),
           eq(enrollments.enrollmentStatus, "active")
         )
       )
@@ -84,7 +84,7 @@ export async function createMaterial(formData: FormData) {
 
   // Verify class ownership
   const [cls] = await db
-    .select({ ownerUserId: courses.ownerUserId })
+    .select({ ownerUserId: courses.lecturerId })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
     .where(eq(classes.id, classId))
@@ -136,7 +136,7 @@ export async function deleteMaterial(materialId: string) {
     .select({
       id: learningMaterials.id,
       classId: learningMaterials.classId,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(learningMaterials)
     .innerJoin(classes, eq(learningMaterials.classId, classes.id))

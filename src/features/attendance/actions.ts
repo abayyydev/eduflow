@@ -8,8 +8,7 @@ import {
   courses,
   academicTerms,
   enrollments,
-  users,
-  studentProfiles,
+  students,
   gradingCategories,
   assessmentItems,
   grades,
@@ -75,7 +74,7 @@ export async function getClassAttendanceOverview(
       courseCode: courses.code,
       courseName: courses.name,
       termName: academicTerms.name,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
       gradingLockedAt: classes.gradingLockedAt,
     })
     .from(classes)
@@ -98,20 +97,19 @@ export async function getClassAttendanceOverview(
   // 3. Fetch enrolled students
   const enrolledStudents = await db
     .select({
-      studentUserId: users.id,
-      name: users.name,
-      studentNumber: studentProfiles.studentNumber,
+      studentUserId: students.id,
+      name: students.name,
+      studentNumber: students.studentNumber,
     })
     .from(enrollments)
-    .innerJoin(users, eq(enrollments.studentUserId, users.id))
-    .innerJoin(studentProfiles, eq(users.id, studentProfiles.userId))
+    .innerJoin(students, eq(enrollments.studentId, students.id))
     .where(
       and(
         eq(enrollments.classId, classId),
         eq(enrollments.enrollmentStatus, "active")
       )
     )
-    .orderBy(asc(studentProfiles.studentNumber));
+    .orderBy(asc(students.studentNumber));
 
   // 4. Fetch all attendance records for these sessions
   const sessionIds = sessions.map((s) => s.id);
@@ -130,7 +128,7 @@ export async function getClassAttendanceOverview(
 
   const recordMap = new Map<string, typeof records[0]>();
   for (const r of records) {
-    recordMap.set(`${r.studentUserId}:${r.sessionId}`, r);
+    recordMap.set(`${r.studentId}:${r.sessionId}`, r);
   }
 
   const studentRows: StudentAttendanceRow[] = [];
@@ -222,7 +220,7 @@ export async function createAttendanceSession(
 
   // Verify class ownership
   const [cls] = await db
-    .select({ ownerUserId: courses.ownerUserId })
+    .select({ ownerUserId: courses.lecturerId })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
     .where(eq(classes.id, classId))
@@ -244,7 +242,7 @@ export async function createAttendanceSession(
 
   // Automatically create default 'present' records for all enrolled students
   const enrolledStudents = await db
-    .select({ studentUserId: enrollments.studentUserId })
+    .select({ studentUserId: enrollments.studentId })
     .from(enrollments)
     .where(
       and(
@@ -257,7 +255,7 @@ export async function createAttendanceSession(
     await db.insert(attendanceRecords).values({
       id: randomUUID(),
       sessionId: newSessionId,
-      studentUserId: st.studentUserId,
+      studentId: st.studentUserId,
       status: "present",
       updatedBy: lecturer.userId,
     });
@@ -287,7 +285,7 @@ export async function updateStudentAttendance(
 
   // Verify ownership
   const [cls] = await db
-    .select({ ownerUserId: courses.ownerUserId })
+    .select({ ownerUserId: courses.lecturerId })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
     .where(eq(classes.id, classId))
@@ -303,7 +301,7 @@ export async function updateStudentAttendance(
     .where(
       and(
         eq(attendanceRecords.sessionId, sessionId),
-        eq(attendanceRecords.studentUserId, studentUserId)
+        eq(attendanceRecords.studentId, studentUserId)
       )
     )
     .limit(1);
@@ -321,7 +319,7 @@ export async function updateStudentAttendance(
     await db.insert(attendanceRecords).values({
       id: randomUUID(),
       sessionId,
-      studentUserId,
+      studentId: studentUserId,
       status,
       note: note || null,
       updatedBy: lecturer.userId,
@@ -340,7 +338,7 @@ export async function syncAttendanceToGradebook(classId: string) {
     .select({
       id: classes.id,
       gradingLockedAt: classes.gradingLockedAt,
-      ownerUserId: courses.ownerUserId,
+      ownerUserId: courses.lecturerId,
     })
     .from(classes)
     .innerJoin(courses, eq(classes.courseId, courses.id))
@@ -428,7 +426,7 @@ export async function syncAttendanceToGradebook(classId: string) {
       .where(
         and(
           eq(grades.assessmentItemId, attItem.id),
-          eq(grades.studentUserId, st.studentUserId)
+          eq(grades.studentId, st.studentUserId)
         )
       )
       .limit(1);
@@ -447,7 +445,7 @@ export async function syncAttendanceToGradebook(classId: string) {
       await db.insert(grades).values({
         id: randomUUID(),
         assessmentItemId: attItem.id,
-        studentUserId: st.studentUserId,
+        studentId: st.studentUserId,
         score: percent,
         feedback: `Kehadiran: ${st.stats.presentCount} dari ${st.stats.totalSessions} sesi pertemuan.`,
         gradedBy: lecturer.userId,

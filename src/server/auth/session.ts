@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "../db";
-import { users } from "../db/schema";
+import { users, lecturers, students } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 const COOKIE_NAME = "eduflow_session";
@@ -20,7 +20,7 @@ export interface SessionUser {
   userId: string;
   name: string;
   email: string;
-  role: "lecturer" | "student";
+  role: "lecturer" | "student" | "admin" | "superadmin";
 }
 
 export async function hashPassword(plainText: string): Promise<string> {
@@ -51,7 +51,7 @@ export async function verifySessionToken(
       userId: payload.userId as string,
       name: payload.name as string,
       email: payload.email as string,
-      role: payload.role as "lecturer" | "student",
+      role: payload.role as "lecturer" | "student" | "admin" | "superadmin",
     };
   } catch {
     return null;
@@ -83,29 +83,66 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   const session = await verifySessionToken(token);
   if (!session) return null;
 
-  // Double check user still exists and is active in DB
-  const [dbUser] = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      role: users.role,
-      isActive: users.isActive,
-    })
-    .from(users)
-    .where(eq(users.id, session.userId))
-    .limit(1);
+  // Double check user still exists and is active in its respective table
+  if (session.role === "lecturer") {
+    const [lecturer] = await db
+      .select({
+        id: lecturers.id,
+        name: lecturers.name,
+        email: lecturers.email,
+        isActive: lecturers.isActive,
+      })
+      .from(lecturers)
+      .where(eq(lecturers.id, session.userId))
+      .limit(1);
 
-  if (!dbUser || !dbUser.isActive) {
-    return null;
+    if (!lecturer || !lecturer.isActive) return null;
+    return {
+      userId: lecturer.id,
+      name: lecturer.name,
+      email: lecturer.email,
+      role: "lecturer",
+    };
+  } else if (session.role === "student") {
+    const [student] = await db
+      .select({
+        id: students.id,
+        name: students.name,
+        email: students.email,
+        isActive: students.isActive,
+      })
+      .from(students)
+      .where(eq(students.id, session.userId))
+      .limit(1);
+
+    if (!student || !student.isActive) return null;
+    return {
+      userId: student.id,
+      name: student.name,
+      email: student.email,
+      role: "student",
+    };
+  } else {
+    const [admin] = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .where(eq(users.id, session.userId))
+      .limit(1);
+
+    if (!admin || !admin.isActive) return null;
+    return {
+      userId: admin.id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+    };
   }
-
-  return {
-    userId: dbUser.id,
-    name: dbUser.name,
-    email: dbUser.email,
-    role: dbUser.role,
-  };
 }
 
 export async function requireUser(): Promise<SessionUser> {
@@ -118,7 +155,7 @@ export async function requireUser(): Promise<SessionUser> {
 
 export async function requireLecturer(): Promise<SessionUser> {
   const user = await requireUser();
-  if (user.role !== "lecturer") {
+  if (user.role !== "lecturer" && user.role !== "superadmin" && user.role !== "admin") {
     throw new Error("FORBIDDEN_NOT_LECTURER");
   }
   return user;

@@ -41,7 +41,8 @@ export interface StudentAssignmentDetailData {
 export interface StudentSubmissionData {
   id: string;
   assignmentId: string;
-  studentUserId: string;
+  studentId?: string;
+  studentUserId?: string;
   status:
     | "draft"
     | "submitted"

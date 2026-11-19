@@ -16,7 +16,7 @@ import {
 } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 
-// 1. Users
+// 1. Users (Superadmin & Admin)
 export const users = mysqlTable(
   "users",
   {
@@ -24,7 +24,7 @@ export const users = mysqlTable(
     name: varchar("name", { length: 150 }).notNull(),
     email: varchar("email", { length: 190 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
-    role: mysqlEnum("role", ["lecturer", "student"]).notNull(),
+    role: mysqlEnum("role", ["admin", "superadmin"]).default("admin").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     lastLoginAt: datetime("last_login_at"),
     createdAt: datetime("created_at")
@@ -37,39 +37,20 @@ export const users = mysqlTable(
   (table) => [uniqueIndex("idx_users_email").on(table.email)]
 );
 
-// 2. Lecturer Profiles
-export const lecturerProfiles = mysqlTable(
-  "lecturer_profiles",
+// 2. Lecturers (Dosen)
+export const lecturers = mysqlTable(
+  "lecturers",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    userId: varchar("user_id", { length: 36 })
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    lecturerNumber: varchar("lecturer_number", { length: 50 }),
+    name: varchar("name", { length: 150 }).notNull(),
+    email: varchar("email", { length: 190 }).notNull(),
+    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    nip: varchar("nip", { length: 50 }),
+    academicTitle: varchar("academic_title", { length: 100 }),
     institutionName: varchar("institution_name", { length: 180 }),
     phone: varchar("phone", { length: 30 }),
-    createdAt: datetime("created_at")
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: datetime("updated_at")
-      .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [uniqueIndex("idx_lecturer_user_id").on(table.userId)]
-);
-
-// 3. Student Profiles
-export const studentProfiles = mysqlTable(
-  "student_profiles",
-  {
-    id: varchar("id", { length: 36 }).primaryKey(),
-    userId: varchar("user_id", { length: 36 })
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    studentNumber: varchar("student_number", { length: 50 }).notNull(),
-    studyProgram: varchar("study_program", { length: 150 }),
-    cohort: varchar("cohort", { length: 30 }),
-    phone: varchar("phone", { length: 30 }),
+    isActive: boolean("is_active").default(true).notNull(),
+    lastLoginAt: datetime("last_login_at"),
     createdAt: datetime("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -78,8 +59,35 @@ export const studentProfiles = mysqlTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("idx_student_user_id").on(table.userId),
-    uniqueIndex("idx_student_number").on(table.studentNumber),
+    uniqueIndex("idx_lecturers_email").on(table.email),
+    uniqueIndex("idx_lecturers_nip").on(table.nip),
+  ]
+);
+
+// 3. Students (Mahasiswa)
+export const students = mysqlTable(
+  "students",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 150 }).notNull(),
+    email: varchar("email", { length: 190 }).notNull(),
+    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    studentNumber: varchar("student_number", { length: 50 }).notNull(), // NIM
+    studyProgram: varchar("study_program", { length: 150 }),
+    cohort: varchar("cohort", { length: 30 }),
+    phone: varchar("phone", { length: 30 }),
+    isActive: boolean("is_active").default(true).notNull(),
+    lastLoginAt: datetime("last_login_at"),
+    createdAt: datetime("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: datetime("updated_at")
+      .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_students_email").on(table.email),
+    uniqueIndex("idx_students_nim").on(table.studentNumber),
   ]
 );
 
@@ -107,9 +115,9 @@ export const courses = mysqlTable("courses", {
   name: varchar("name", { length: 180 }).notNull(),
   description: text("description"),
   creditUnits: tinyint("credit_units"),
-  ownerUserId: varchar("owner_user_id", { length: 36 })
+  lecturerId: varchar("lecturer_id", { length: 36 })
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => lecturers.id, { onDelete: "cascade" }),
   archivedAt: datetime("archived_at"),
   createdAt: datetime("created_at")
     .default(sql`CURRENT_TIMESTAMP`)
@@ -163,9 +171,9 @@ export const enrollments = mysqlTable(
     classId: varchar("class_id", { length: 36 })
       .notNull()
       .references(() => classes.id, { onDelete: "cascade" }),
-    studentUserId: varchar("student_user_id", { length: 36 })
+    studentId: varchar("student_id", { length: 36 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => students.id, { onDelete: "cascade" }),
     enrollmentStatus: mysqlEnum("enrollment_status", [
       "active",
       "dropped",
@@ -186,7 +194,7 @@ export const enrollments = mysqlTable(
   (table) => [
     uniqueIndex("idx_enrollment_class_student").on(
       table.classId,
-      table.studentUserId
+      table.studentId
     ),
     index("idx_enrollments_class_status").on(
       table.classId,
@@ -209,7 +217,7 @@ export const learningMaterials = mysqlTable("learning_materials", {
   publishedAt: datetime("published_at"),
   createdBy: varchar("created_by", { length: 36 })
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => lecturers.id, { onDelete: "cascade" }),
   createdAt: datetime("created_at")
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
@@ -315,9 +323,9 @@ export const submissions = mysqlTable(
     assignmentId: varchar("assignment_id", { length: 36 })
       .notNull()
       .references(() => assignments.id, { onDelete: "cascade" }),
-    studentUserId: varchar("student_user_id", { length: 36 })
+    studentId: varchar("student_id", { length: 36 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => students.id, { onDelete: "cascade" }),
     status: mysqlEnum("status", [
       "draft",
       "submitted",
@@ -332,9 +340,10 @@ export const submissions = mysqlTable(
     currentVersion: int("current_version").default(1).notNull(),
     score: decimal("score", { precision: 7, scale: 2 }),
     feedback: text("feedback"),
-    gradedBy: varchar("graded_by", { length: 36 }).references(() => users.id, {
-      onDelete: "set null",
-    }),
+    gradedBy: varchar("graded_by", { length: 36 }).references(
+      () => lecturers.id,
+      { onDelete: "set null" }
+    ),
     gradedAt: datetime("graded_at"),
     createdAt: datetime("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
@@ -346,7 +355,7 @@ export const submissions = mysqlTable(
   (table) => [
     uniqueIndex("idx_submission_assignment_student").on(
       table.assignmentId,
-      table.studentUserId
+      table.studentId
     ),
     index("idx_submissions_status_date").on(table.status, table.submittedAt),
   ]
@@ -376,14 +385,14 @@ export const grades = mysqlTable(
     assessmentItemId: varchar("assessment_item_id", { length: 36 })
       .notNull()
       .references(() => assessmentItems.id, { onDelete: "cascade" }),
-    studentUserId: varchar("student_user_id", { length: 36 })
+    studentId: varchar("student_id", { length: 36 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => students.id, { onDelete: "cascade" }),
     score: decimal("score", { precision: 7, scale: 2 }), // NULL = not graded yet, 0 = valid zero
     feedback: text("feedback"),
     gradedBy: varchar("graded_by", { length: 36 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => lecturers.id, { onDelete: "cascade" }),
     gradedAt: datetime("graded_at"),
     createdAt: datetime("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
@@ -395,7 +404,7 @@ export const grades = mysqlTable(
   (table) => [
     uniqueIndex("idx_grade_item_student").on(
       table.assessmentItemId,
-      table.studentUserId
+      table.studentId
     ),
   ]
 );
@@ -452,16 +461,16 @@ export const attendanceRecords = mysqlTable(
     sessionId: varchar("session_id", { length: 36 })
       .notNull()
       .references(() => attendanceSessions.id, { onDelete: "cascade" }),
-    studentUserId: varchar("student_user_id", { length: 36 })
+    studentId: varchar("student_id", { length: 36 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => students.id, { onDelete: "cascade" }),
     status: mysqlEnum("status", ["present", "sick", "excused", "absent"])
       .default("absent")
       .notNull(),
     note: varchar("note", { length: 255 }),
     updatedBy: varchar("updated_by", { length: 36 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => lecturers.id, { onDelete: "cascade" }),
     createdAt: datetime("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -472,7 +481,7 @@ export const attendanceRecords = mysqlTable(
   (table) => [
     uniqueIndex("idx_attendance_session_student").on(
       table.sessionId,
-      table.studentUserId
+      table.studentId
     ),
   ]
 );
@@ -482,9 +491,7 @@ export const notifications = mysqlTable(
   "notifications",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    userId: varchar("user_id", { length: 36 })
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 }).notNull(),
     title: varchar("title", { length: 180 }).notNull(),
     body: text("body").notNull(),
     type: varchar("type", { length: 50 }).notNull(),
@@ -511,9 +518,10 @@ export const auditLogs = mysqlTable(
   "audit_logs",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    actorUserId: varchar("actor_user_id", { length: 36 })
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    actorUserId: varchar("actor_user_id", { length: 36 }).notNull(),
+    actorType: mysqlEnum("actor_type", ["admin", "lecturer", "student"])
+      .default("lecturer")
+      .notNull(),
     entityType: varchar("entity_type", { length: 80 }).notNull(),
     entityId: varchar("entity_id", { length: 36 }).notNull(),
     action: varchar("action", { length: 80 }).notNull(),

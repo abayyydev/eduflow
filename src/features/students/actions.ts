@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/server/db";
-import { users, studentProfiles, enrollments } from "@/server/db/schema";
+import { students, enrollments } from "@/server/db/schema";
 import { requireLecturer } from "@/server/auth/session";
 import { hashPassword } from "@/server/auth/session";
 import { eq, and, sql } from "drizzle-orm";
@@ -23,28 +23,26 @@ export async function getAllStudents(searchQuery?: string) {
 
   const baseQuery = db
     .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      isActive: users.isActive,
-      studentNumber: studentProfiles.studentNumber,
-      studyProgram: studentProfiles.studyProgram,
-      cohort: studentProfiles.cohort,
-      phone: studentProfiles.phone,
+      id: students.id,
+      name: students.name,
+      email: students.email,
+      isActive: students.isActive,
+      studentNumber: students.studentNumber,
+      studyProgram: students.studyProgram,
+      cohort: students.cohort,
+      phone: students.phone,
       enrolledClassesCount: sql<number>`count(distinct ${enrollments.classId})`,
     })
-    .from(users)
-    .innerJoin(studentProfiles, eq(users.id, studentProfiles.userId))
+    .from(students)
     .leftJoin(
       enrollments,
       and(
-        eq(enrollments.studentUserId, users.id),
+        eq(enrollments.studentId, students.id),
         eq(enrollments.enrollmentStatus, "active")
       )
     )
-    .where(eq(users.role, "student"))
-    .groupBy(users.id, studentProfiles.id)
-    .orderBy(studentProfiles.studentNumber);
+    .groupBy(students.id)
+    .orderBy(students.studentNumber);
 
   const results = await baseQuery;
 
@@ -81,49 +79,43 @@ export async function createStudent(formData: FormData) {
 
   const { name, email, studentNumber, studyProgram, cohort, phone } = validated.data;
 
-  // Check email uniqueness
+  // Check email uniqueness in students table
   const [existingEmail] = await db
     .select()
-    .from(users)
-    .where(eq(users.email, email.toLowerCase().trim()))
+    .from(students)
+    .where(eq(students.email, email.toLowerCase().trim()))
     .limit(1);
 
   if (existingEmail) {
     return { error: "Email sudah terdaftar dalam sistem." };
   }
 
-  // Check student number uniqueness
+  // Check student number uniqueness in students table
   const [existingNim] = await db
     .select()
-    .from(studentProfiles)
-    .where(eq(studentProfiles.studentNumber, studentNumber.trim()))
+    .from(students)
+    .where(eq(students.studentNumber, studentNumber.trim()))
     .limit(1);
 
   if (existingNim) {
     return { error: "NIM sudah terdaftar dalam sistem." };
   }
 
-  const newUserId = randomUUID();
+  const newStudentId = randomUUID();
   const defaultPasswordHash = await hashPassword("password123");
 
-  await db.insert(users).values({
-    id: newUserId,
+  await db.insert(students).values({
+    id: newStudentId,
     name: name.trim(),
     email: email.toLowerCase().trim(),
     passwordHash: defaultPasswordHash,
-    role: "student",
-    isActive: true,
-  });
-
-  await db.insert(studentProfiles).values({
-    id: randomUUID(),
-    userId: newUserId,
     studentNumber: studentNumber.trim(),
     studyProgram: studyProgram?.trim() || "Teknik Informatika",
     cohort: cohort?.trim() || "2024",
     phone: phone?.trim() || null,
+    isActive: true,
   });
 
   revalidatePath("/students");
-  return { success: true, studentId: newUserId };
+  return { success: true, studentId: newStudentId };
 }

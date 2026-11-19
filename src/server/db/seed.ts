@@ -1,8 +1,8 @@
 import { db } from "./index";
 import {
   users,
-  lecturerProfiles,
-  studentProfiles,
+  lecturers,
+  students,
   academicTerms,
   courses,
   classes,
@@ -18,15 +18,17 @@ import {
   attendanceRecords,
   learningMaterials,
   notifications,
+  auditLogs,
 } from "./schema";
 import { hashPassword } from "../auth/session";
 import { randomUUID } from "crypto";
 
 async function main() {
-  console.log("🌱 Starting EDUFlow database seed...");
+  console.log("🌱 Starting EDUFlow database seed (Separated Lecturers, Students & Users)...");
 
   // 1. Clean existing data in reverse foreign key order
   await db.delete(notifications);
+  await db.delete(auditLogs);
   await db.delete(attendanceRecords);
   await db.delete(attendanceSessions);
   await db.delete(grades);
@@ -41,35 +43,41 @@ async function main() {
   await db.delete(classes);
   await db.delete(courses);
   await db.delete(academicTerms);
-  await db.delete(studentProfiles);
-  await db.delete(lecturerProfiles);
+  await db.delete(students);
+  await db.delete(lecturers);
   await db.delete(users);
 
   const defaultPasswordHash = await hashPassword("password123");
 
-  // 2. Create Lecturer Owner
-  const lecturerUserId = randomUUID();
+  // 2. Create Superadmin in users table
+  const superadminId = randomUUID();
   await db.insert(users).values({
-    id: lecturerUserId,
+    id: superadminId,
+    name: "System Superadmin",
+    email: "admin@eduflow.test",
+    passwordHash: defaultPasswordHash,
+    role: "superadmin",
+    isActive: true,
+  });
+  console.log("✓ Superadmin created in users: admin@eduflow.test (password: password123)");
+
+  // 3. Create Lecturer in lecturers table
+  const lecturerId = randomUUID();
+  await db.insert(lecturers).values({
+    id: lecturerId,
     name: "Dr. Budi Santoso, M.Kom.",
     email: "dosen@eduflow.test",
     passwordHash: defaultPasswordHash,
-    role: "lecturer",
-    isActive: true,
-  });
-
-  await db.insert(lecturerProfiles).values({
-    id: randomUUID(),
-    userId: lecturerUserId,
-    lecturerNumber: "0012058001",
+    nip: "198001012005011001",
+    academicTitle: "Doktor Ilmu Komputer",
     institutionName: "Universitas Teknologi Nusantara",
     phone: "081234567890",
+    isActive: true,
   });
+  console.log("✓ Lecturer created in lecturers: dosen@eduflow.test (password: password123)");
 
-  console.log("✓ Lecturer created: dosen@eduflow.test (password: password123)");
-
-  // 3. Create 20 Students
-  const studentUserIds: string[] = [];
+  // 4. Create 20 Students in students table
+  const studentIds: string[] = [];
   const studentNames = [
     "Ahmad Fauzi",
     "Bunga Citra",
@@ -95,32 +103,25 @@ async function main() {
 
   for (let i = 0; i < studentNames.length; i++) {
     const sId = randomUUID();
-    studentUserIds.push(sId);
+    studentIds.push(sId);
     const nim = `2024${String(i + 1).padStart(4, "0")}`;
     const email = `mhs${i + 1}@eduflow.test`;
 
-    await db.insert(users).values({
+    await db.insert(students).values({
       id: sId,
       name: studentNames[i],
       email: email,
       passwordHash: defaultPasswordHash,
-      role: "student",
-      isActive: true,
-    });
-
-    await db.insert(studentProfiles).values({
-      id: randomUUID(),
-      userId: sId,
       studentNumber: nim,
       studyProgram: "Teknik Informatika",
       cohort: "2024",
       phone: `08198765${String(i).padStart(4, "0")}`,
+      isActive: true,
     });
   }
+  console.log("✓ 20 Students created in students: mhs1@eduflow.test .. mhs20@eduflow.test (password: password123)");
 
-  console.log("✓ 20 Students created: mhs1@eduflow.test .. mhs20@eduflow.test (password: password123)");
-
-  // 4. Create Academic Term
+  // 5. Create Academic Term
   const termId = randomUUID();
   await db.insert(academicTerms).values({
     id: termId,
@@ -132,7 +133,7 @@ async function main() {
     isActive: true,
   });
 
-  // 5. Create 2 Courses
+  // 6. Create 2 Courses
   const course1Id = randomUUID();
   const course2Id = randomUUID();
 
@@ -143,7 +144,7 @@ async function main() {
       name: "Algoritma dan Struktur Data",
       description: "Dasar logika komputasi, struktur data linier dan non-linier.",
       creditUnits: 3,
-      ownerUserId: lecturerUserId,
+      lecturerId: lecturerId,
     },
     {
       id: course2Id,
@@ -151,11 +152,11 @@ async function main() {
       name: "Pemrograman Web Modern",
       description: "Pengembangan aplikasi web fullstack modern dengan arsitektur modular.",
       creditUnits: 3,
-      ownerUserId: lecturerUserId,
+      lecturerId: lecturerId,
     },
   ]);
 
-  // 6. Create 3 Classes
+  // 7. Create 3 Classes
   const class1Id = randomUUID(); // ASD Kelas A
   const class2Id = randomUUID(); // ASD Kelas B
   const class3Id = randomUUID(); // Web Modern Kelas A
@@ -192,250 +193,295 @@ async function main() {
 
   console.log("✓ Courses & Classes created");
 
-  // 7. Enroll Students
-  // Class 1: First 12 students
-  // Class 2: Next 8 students
-  // Class 3: All 20 students
+  // 8. Enroll Students
   for (let i = 0; i < 12; i++) {
     await db.insert(enrollments).values({
       id: randomUUID(),
       classId: class1Id,
-      studentUserId: studentUserIds[i],
+      studentId: studentIds[i],
       enrollmentStatus: "active",
     });
   }
+
   for (let i = 12; i < 20; i++) {
     await db.insert(enrollments).values({
       id: randomUUID(),
       classId: class2Id,
-      studentUserId: studentUserIds[i],
+      studentId: studentIds[i],
       enrollmentStatus: "active",
     });
   }
+
   for (let i = 0; i < 20; i++) {
     await db.insert(enrollments).values({
       id: randomUUID(),
       classId: class3Id,
-      studentUserId: studentUserIds[i],
+      studentId: studentIds[i],
       enrollmentStatus: "active",
     });
   }
+  console.log("✓ Enrollments seeded");
 
-  console.log("✓ Student enrollments created");
+  // 9. Standard Grade Scales for Class 1, 2, 3
+  const standardScales = [
+    { letterGrade: "A", minScore: "85.00", maxScore: "100.00", gradePoint: "4.00" },
+    { letterGrade: "A-", minScore: "80.00", maxScore: "84.99", gradePoint: "3.70" },
+    { letterGrade: "B+", minScore: "75.00", maxScore: "79.99", gradePoint: "3.30" },
+    { letterGrade: "B", minScore: "70.00", maxScore: "74.99", gradePoint: "3.00" },
+    { letterGrade: "B-", minScore: "65.00", maxScore: "69.99", gradePoint: "2.70" },
+    { letterGrade: "C+", minScore: "60.00", maxScore: "64.99", gradePoint: "2.30" },
+    { letterGrade: "C", minScore: "55.00", maxScore: "59.99", gradePoint: "2.00" },
+    { letterGrade: "D", minScore: "40.00", maxScore: "54.99", gradePoint: "1.00" },
+    { letterGrade: "E", minScore: "0.00", maxScore: "39.99", gradePoint: "0.00" },
+  ];
 
-  // 8. Setup Grading Categories & Scale for all 3 classes
-  // Default categories total 100%:
-  // Presensi: 10%, Tugas: 20%, Kuis: 15%, Praktikum: 15%, UTS: 20%, UAS: 20% = 100%
-  const classList = [class1Id, class2Id, class3Id];
-
-  for (const cId of classList) {
-    // Grade scales
-    await db.insert(gradeScales).values([
-      { id: randomUUID(), classId: cId, letterGrade: "A", minScore: "85.00", maxScore: "100.00", gradePoint: "4.00" },
-      { id: randomUUID(), classId: cId, letterGrade: "A-", minScore: "80.00", maxScore: "84.99", gradePoint: "3.70" },
-      { id: randomUUID(), classId: cId, letterGrade: "B+", minScore: "75.00", maxScore: "79.99", gradePoint: "3.30" },
-      { id: randomUUID(), classId: cId, letterGrade: "B", minScore: "70.00", maxScore: "74.99", gradePoint: "3.00" },
-      { id: randomUUID(), classId: cId, letterGrade: "B-", minScore: "65.00", maxScore: "69.99", gradePoint: "2.70" },
-      { id: randomUUID(), classId: cId, letterGrade: "C+", minScore: "60.00", maxScore: "64.99", gradePoint: "2.30" },
-      { id: randomUUID(), classId: cId, letterGrade: "C", minScore: "55.00", maxScore: "59.99", gradePoint: "2.00" },
-      { id: randomUUID(), classId: cId, letterGrade: "D", minScore: "40.00", maxScore: "54.99", gradePoint: "1.00" },
-      { id: randomUUID(), classId: cId, letterGrade: "E", minScore: "0.00", maxScore: "39.99", gradePoint: "0.00" },
-    ]);
-
-    // Categories
-    const catAttendance = randomUUID();
-    const catAssignment = randomUUID();
-    const catQuiz = randomUUID();
-    const catPracticum = randomUUID();
-    const catMidterm = randomUUID();
-    const catFinal = randomUUID();
-
-    await db.insert(gradingCategories).values([
-      { id: catAttendance, classId: cId, name: "Presensi", weightPercent: "10.00", aggregationMethod: "average", isRequired: true, sortOrder: 1 },
-      { id: catAssignment, classId: cId, name: "Tugas", weightPercent: "20.00", aggregationMethod: "average", isRequired: true, sortOrder: 2 },
-      { id: catQuiz, classId: cId, name: "Kuis", weightPercent: "15.00", aggregationMethod: "average", isRequired: false, sortOrder: 3 },
-      { id: catPracticum, classId: cId, name: "Praktikum", weightPercent: "15.00", aggregationMethod: "average", isRequired: false, sortOrder: 4 },
-      { id: catMidterm, classId: cId, name: "UTS", weightPercent: "20.00", aggregationMethod: "average", isRequired: true, sortOrder: 5 },
-      { id: catFinal, classId: cId, name: "UAS", weightPercent: "20.00", aggregationMethod: "average", isRequired: true, sortOrder: 6 },
-    ]);
-
-    // Assessment Items for Class 1 (as primary demo)
-    if (cId === class1Id) {
-      const itemTugas1 = randomUUID();
-      const itemTugas2 = randomUUID();
-      const itemKuis1 = randomUUID();
-      const itemUTS = randomUUID();
-      const itemUAS = randomUUID();
-
-      await db.insert(assessmentItems).values([
-        { id: itemTugas1, categoryId: catAssignment, title: "Tugas 1: Linked List & Stack", maxScore: "100.00", isPublished: true },
-        { id: itemTugas2, categoryId: catAssignment, title: "Tugas 2: Binary Search Tree", maxScore: "100.00", isPublished: false },
-        { id: itemKuis1, categoryId: catQuiz, title: "Kuis 1: Kompleksitas Algoritma", maxScore: "100.00", isPublished: true },
-        { id: itemUTS, categoryId: catMidterm, title: "Ujian Tengah Semester", maxScore: "100.00", isPublished: true },
-        { id: itemUAS, categoryId: catFinal, title: "Ujian Akhir Semester", maxScore: "100.00", isPublished: false }, // Not graded yet (null)
-      ]);
-
-      // Create Assignment 1 linked to itemTugas1
-      const assign1Id = randomUUID();
-      await db.insert(assignments).values({
-        id: assign1Id,
-        classId: class1Id,
-        title: "Tugas 1: Linked List & Stack Implementation",
-        instructions: "Implementasikan struktur data Double Linked List dan evaluasi stack expression. Kumpulkan kode sumber atau link repo GitHub.",
-        maxScore: "100.00",
-        opensAt: new Date(Date.now() - 7 * 86400000),
-        dueAt: new Date(Date.now() + 7 * 86400000),
-        allowLate: true,
-        submissionMode: "both",
-        maxFileSizeMb: 15,
-        status: "published",
-        assessmentItemId: itemTugas1,
+  for (const cId of [class1Id, class2Id, class3Id]) {
+    for (const sc of standardScales) {
+      await db.insert(gradeScales).values({
+        id: randomUUID(),
+        classId: cId,
+        ...sc,
       });
-
-      // Seed submissions & grades for students in Class 1 (first 12 students)
-      for (let s = 0; s < 12; s++) {
-        const studentId = studentUserIds[s];
-
-        // Assignment 1 submission
-        const subId = randomUUID();
-        const scoreVal = s === 0 ? "95.00" : s === 1 ? "88.00" : s === 2 ? "0.00" : s === 3 ? "75.00" : null;
-
-        await db.insert(submissions).values({
-          id: subId,
-          assignmentId: assign1Id,
-          studentUserId: studentId,
-          status: scoreVal !== null ? "graded" : s < 8 ? "submitted" : "draft",
-          submittedAt: new Date(Date.now() - 2 * 86400000),
-          currentVersion: 1,
-          score: scoreVal,
-          feedback: scoreVal !== null ? "Pengerjaan rapi dan logika pointer tepat." : null,
-          gradedBy: scoreVal !== null ? lecturerUserId : null,
-          gradedAt: scoreVal !== null ? new Date() : null,
-        });
-
-        await db.insert(submissionVersions).values({
-          id: randomUUID(),
-          submissionId: subId,
-          versionNumber: 1,
-          externalUrl: "https://github.com/mahasiswa/linked-list-stack",
-          originalFilename: "tugas1_linked_list.zip",
-          fileObjectKey: "demo/tugas1_linked_list.zip",
-          note: "Pengumpulan versi 1",
-          submittedAt: new Date(Date.now() - 2 * 86400000),
-        });
-
-        // Insert grade for Tugas 1
-        await db.insert(grades).values({
-          id: randomUUID(),
-          assessmentItemId: itemTugas1,
-          studentUserId: studentId,
-          score: scoreVal, // NULL testing & 0 testing
-          feedback: scoreVal !== null ? "Pengerjaan baik" : null,
-          gradedBy: lecturerUserId,
-          gradedAt: scoreVal !== null ? new Date() : null,
-        });
-
-        // Insert grade for Kuis 1 (some graded, some null)
-        const quizScore = s < 10 ? String(70 + (s * 3) % 25) + ".00" : null;
-        await db.insert(grades).values({
-          id: randomUUID(),
-          assessmentItemId: itemKuis1,
-          studentUserId: studentId,
-          score: quizScore,
-          gradedBy: lecturerUserId,
-          gradedAt: quizScore ? new Date() : null,
-        });
-
-        // Insert grade for UTS
-        const utsScore = s < 8 ? String(75 + (s * 2) % 20) + ".00" : null;
-        await db.insert(grades).values({
-          id: randomUUID(),
-          assessmentItemId: itemUTS,
-          studentUserId: studentId,
-          score: utsScore,
-          gradedBy: lecturerUserId,
-          gradedAt: utsScore ? new Date() : null,
-        });
-      }
-
-      // Create 8 Attendance Sessions
-      for (let m = 1; m <= 8; m++) {
-        const sessId = randomUUID();
-        const sessDate = `2026-09-${String(m * 3).padStart(2, "0")}`;
-        await db.insert(attendanceSessions).values({
-          id: sessId,
-          classId: class1Id,
-          meetingNumber: m,
-          sessionDate: sessDate,
-          topic: `Pertemuan ${m}: Pendalaman Materi Algoritma Bab ${m}`,
-        });
-
-        // Insert attendance records for 12 students
-        for (let s = 0; s < 12; s++) {
-          const status = (s + m) % 11 === 0 ? "sick" : (s + m) % 7 === 0 ? "excused" : (s + m) % 5 === 0 ? "absent" : "present";
-          await db.insert(attendanceRecords).values({
-            id: randomUUID(),
-            sessionId: sessId,
-            studentUserId: studentUserIds[s],
-            status: status,
-            note: status !== "present" ? `Keterangan status ${status}` : null,
-            updatedBy: lecturerUserId,
-          });
-        }
-      }
-
-      // Add 2 Learning Materials
-      await db.insert(learningMaterials).values([
-        {
-          id: randomUUID(),
-          classId: class1Id,
-          meetingNumber: 1,
-          title: "Pengantar Algoritma dan Notasi Big-O",
-          description: "Slide pengenalan analisa efisiensi waktu dan ruang algoritma komputasi.",
-          externalUrl: "https://drive.google.com/file/d/demo-big-o-slides/view",
-          createdBy: lecturerUserId,
-          publishedAt: new Date(),
-        },
-        {
-          id: randomUUID(),
-          classId: class1Id,
-          meetingNumber: 2,
-          title: "Struktur Data Linier: Singly & Doubly Linked List",
-          description: "Modul praktikum dan contoh kode C++/Java pointer memory.",
-          externalUrl: "https://github.com/kuliah-algoritma/modul-linked-list",
-          createdBy: lecturerUserId,
-          publishedAt: new Date(),
-        },
-      ]);
     }
   }
 
-  // 9. Initial Notifications
+  // 10. Grading Categories (Sum 100%) for Class 1
+  const catTugasId = randomUUID();
+  const catKuisId = randomUUID();
+  const catUTSId = randomUUID();
+  const catUASId = randomUUID();
+  const catPresensiId = randomUUID();
+
+  await db.insert(gradingCategories).values([
+    {
+      id: catTugasId,
+      classId: class1Id,
+      name: "Tugas",
+      weightPercent: "20.00",
+      aggregationMethod: "average",
+      isRequired: true,
+      sortOrder: 1,
+    },
+    {
+      id: catKuisId,
+      classId: class1Id,
+      name: "Kuis",
+      weightPercent: "15.00",
+      aggregationMethod: "average",
+      isRequired: false,
+      sortOrder: 2,
+    },
+    {
+      id: catUTSId,
+      classId: class1Id,
+      name: "UTS",
+      weightPercent: "25.00",
+      aggregationMethod: "average",
+      isRequired: true,
+      sortOrder: 3,
+    },
+    {
+      id: catUASId,
+      classId: class1Id,
+      name: "UAS",
+      weightPercent: "30.00",
+      aggregationMethod: "average",
+      isRequired: true,
+      sortOrder: 4,
+    },
+    {
+      id: catPresensiId,
+      classId: class1Id,
+      name: "Presensi",
+      weightPercent: "10.00",
+      aggregationMethod: "average",
+      isRequired: false,
+      sortOrder: 5,
+    },
+  ]);
+
+  // 11. Assessment Items
+  const itemTugas1Id = randomUUID();
+  const itemTugas2Id = randomUUID();
+  const itemUTSId = randomUUID();
+  const itemPresensiId = randomUUID();
+
+  await db.insert(assessmentItems).values([
+    {
+      id: itemTugas1Id,
+      categoryId: catTugasId,
+      title: "Tugas 1 - Algoritma Searching & Sorting",
+      maxScore: "100.00",
+      isPublished: true,
+    },
+    {
+      id: itemTugas2Id,
+      categoryId: catTugasId,
+      title: "Tugas 2 - Binary Search Tree",
+      maxScore: "100.00",
+      isPublished: true,
+    },
+    {
+      id: itemUTSId,
+      categoryId: catUTSId,
+      title: "Ujian Tengah Semester ASD",
+      maxScore: "100.00",
+      isPublished: true,
+    },
+    {
+      id: itemPresensiId,
+      categoryId: catPresensiId,
+      title: "Rekap Presensi Perkuliahan",
+      maxScore: "100.00",
+      isPublished: true,
+    },
+  ]);
+
+  // 12. Assignments
+  const asg1Id = randomUUID();
+  await db.insert(assignments).values({
+    id: asg1Id,
+    classId: class1Id,
+    title: "Tugas 1 - Implementasi Algoritma Sorting",
+    instructions: "Implementasikan Bubble Sort, Merge Sort, dan Quick Sort dalam TypeScript atau C++.",
+    maxScore: "100.00",
+    dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // +7 days
+    submissionMode: "both",
+    status: "published",
+    assessmentItemId: itemTugas1Id,
+  });
+
+  // 13. Submissions for Class 1
+  for (let i = 0; i < 5; i++) {
+    const subId = randomUUID();
+    const verId = randomUUID();
+    const isGraded = i < 3;
+    const scoreVal = isGraded ? (85 + i * 4).toString() : null;
+
+    await db.insert(submissions).values({
+      id: subId,
+      assignmentId: asg1Id,
+      studentId: studentIds[i],
+      status: isGraded ? "graded" : "submitted",
+      submittedAt: new Date(),
+      currentVersion: 1,
+      score: scoreVal,
+      feedback: isGraded ? "Kode sangat bersih, analisis kompleksitas tepat." : null,
+      gradedBy: isGraded ? lecturerId : null,
+      gradedAt: isGraded ? new Date() : null,
+    });
+
+    await db.insert(submissionVersions).values({
+      id: verId,
+      submissionId: subId,
+      versionNumber: 1,
+      originalFilename: `tugas1_${studentNames[i].toLowerCase().replace(/\s+/g, "_")}.pdf`,
+      externalUrl: "https://github.com/example/student-project",
+      note: "Pengumpulan tugas 1 versi awal.",
+    });
+
+    if (isGraded) {
+      await db.insert(grades).values({
+        id: randomUUID(),
+        assessmentItemId: itemTugas1Id,
+        studentId: studentIds[i],
+        score: scoreVal,
+        feedback: "Tugas 1 dinilai melalui pengumpulan tugas.",
+        gradedBy: lecturerId,
+        gradedAt: new Date(),
+      });
+    }
+  }
+
+  // 14. 8 Attendance Sessions for Class 1
+  const sessionDates = [
+    "2026-09-01",
+    "2026-09-08",
+    "2026-09-15",
+    "2026-09-22",
+    "2026-09-29",
+    "2026-10-06",
+    "2026-10-13",
+    "2026-10-20",
+  ];
+
+  for (let ses = 1; ses <= 8; ses++) {
+    const sessionId = randomUUID();
+    const sessionDate = sessionDates[ses - 1];
+
+    await db.insert(attendanceSessions).values({
+      id: sessionId,
+      classId: class1Id,
+      meetingNumber: ses,
+      sessionDate: sessionDate,
+      topic: `Materi Sesi Perkuliahan ${ses}: Logika & Struktur Data`,
+    });
+
+    // 12 students attendance records
+    for (let i = 0; i < 12; i++) {
+      const status = i === 11 && ses > 6 ? "sick" : i === 10 && ses === 8 ? "excused" : "present";
+      await db.insert(attendanceRecords).values({
+        id: randomUUID(),
+        sessionId: sessionId,
+        studentId: studentIds[i],
+        status: status,
+        updatedBy: lecturerId,
+      });
+    }
+  }
+
+  // 15. Learning Materials
+  await db.insert(learningMaterials).values([
+    {
+      id: randomUUID(),
+      classId: class1Id,
+      meetingNumber: 1,
+      title: "Pengenalan Struktur Data & Analisis Algoritma",
+      description: "Slide pengantar Big-O notation, array, dan linked list.",
+      externalUrl: "https://slides.example.com/asd-materi-1",
+      createdBy: lecturerId,
+      publishedAt: new Date(),
+    },
+    {
+      id: randomUUID(),
+      classId: class1Id,
+      meetingNumber: 2,
+      title: "Stack & Queue: Konsep dan Penerapan",
+      description: "Implementasi stack & queue dalam evaluasi ekspresi aritmatika.",
+      externalUrl: "https://drive.example.com/asd-materi-2",
+      createdBy: lecturerId,
+      publishedAt: new Date(),
+    },
+  ]);
+
+  // 16. In-App Notifications
   await db.insert(notifications).values([
     {
       id: randomUUID(),
-      userId: lecturerUserId,
-      title: "Selamat datang di EDUFlow",
-      body: "Workspace akademik personal Anda telah siap digunakan.",
+      userId: lecturerId,
+      title: "Selamat Datang di EDUFlow",
+      body: "Kelas Algoritma dan Struktur Data berhasil diinisialisasi.",
       type: "system",
       targetUrl: "/classes",
     },
     {
       id: randomUUID(),
-      userId: studentUserIds[0],
-      title: "Tugas Baru Dipublikasikan",
-      body: "Dosen telah mempublikasikan Tugas 1: Linked List & Stack Implementation.",
+      userId: studentIds[0],
+      title: "Tugas Baru Diberikan",
+      body: "Tugas 1 - Implementasi Algoritma Sorting telah tersedia.",
       type: "assignment",
-      targetUrl: "/student/assignments",
+      targetUrl: `/student/assignments/${asg1Id}`,
     },
   ]);
 
-  console.log("✅ Seed completed successfully!");
+  console.log("✅ EDUFlow database successfully seeded!");
 }
 
 main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("❌ Seed failed:", err);
+  .catch((e) => {
+    console.error("❌ Seed failed:", e);
     process.exit(1);
+  })
+  .finally(async () => {
+    process.exit(0);
   });

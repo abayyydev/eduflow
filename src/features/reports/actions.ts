@@ -50,7 +50,7 @@ export async function getReportsOverview(): Promise<ClassReportSummary[]> {
     .innerJoin(academicTerms, eq(classes.academicTermId, academicTerms.id))
     .where(
       and(
-        eq(courses.ownerUserId, lecturer.userId),
+        eq(courses.lecturerId, lecturer.userId),
         eq(classes.status, "active")
       )
     );
