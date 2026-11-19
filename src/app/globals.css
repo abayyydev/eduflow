@@ -50,28 +50,49 @@ body {
   --foreground: #172033;
 }
 
-/* 2. GLASSMORPHISM -> Bening2 kaya kaca */
-[data-theme="glassmorphism"] body,
-[data-theme="glassmorphism"] {
-  background: linear-gradient(135deg, #E0E7FF 0%, #F5F3FF 45%, #E0F2FE 100%) !important;
-  background-attachment: fixed !important;
+/* 2. GLASSMORPHISM -> Bening2 kaya kaca (GPU Optimized) */
+[data-theme="glassmorphism"] body {
+  position: relative;
+  min-height: 100vh;
+  background-color: #F0F4FA !important;
 }
 
-[data-theme="glassmorphism"] .bg-white,
+[data-theme="glassmorphism"] body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #E0E7FF 0%, #F5F3FF 45%, #E0F2FE 100%) !important;
+  z-index: -1;
+  pointer-events: none;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
 [data-theme="glassmorphism"] header,
 [data-theme="glassmorphism"] aside {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border-color: rgba(255, 255, 255, 0.65) !important;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-color: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 0 4px 20px 0 rgba(31, 38, 135, 0.05) !important;
+  transform: translateZ(0);
+}
+
+[data-theme="glassmorphism"] .bg-white {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.04) !important;
 }
 
 [data-theme="glassmorphism"] input,
 [data-theme="glassmorphism"] select {
-  background: rgba(255, 255, 255, 0.6) !important;
-  backdrop-filter: blur(8px) !important;
-  border-color: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
 }
 
 /* 3. NEUMORPHISM -> Komponen timbul seperti 3D */
