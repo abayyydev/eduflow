@@ -29,6 +29,7 @@ export default async function AttendancePage({ searchParams }: AttendancePagePro
 
   return (
     <AttendanceClient
+      key={targetClassId}
       initialData={attendanceData}
       availableClasses={availableClasses}
     />

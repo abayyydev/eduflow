@@ -46,6 +46,7 @@ interface StudentAttendanceScanProps {
         minutesRemaining: number;
       };
       todayStatus: string | null;
+      activeOpenMeeting?: number | null;
     }>;
     recentRecords: Array<{
       classId: string;
@@ -506,7 +507,14 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
                     {cls.scheduleText || "Jadwal reguler"}
                   </p>
                   <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-100 text-[10px]">
-                    <span className="font-bold text-cyan-700">Token: {cls.qrCodeToken}</span>
+                    <div className="flex items-center gap-1.5 font-bold text-cyan-700">
+                      <span>Token: {cls.qrCodeToken}</span>
+                      {cls.activeOpenMeeting && (
+                        <span className="px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 font-extrabold text-[9px]">
+                          P{cls.activeOpenMeeting} BUKA
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={`px-1.5 py-0.5 rounded font-extrabold ${
                         cls.todayStatus === "present"

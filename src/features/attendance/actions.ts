@@ -26,17 +26,19 @@ export interface StudentAttendanceRow {
   records: Record<
     string,
     {
-      status: "present" | "late" | "sick" | "excused" | "absent";
+      status: "present" | "late" | "sick" | "excused" | "absent" | null;
       note: string | null;
     }
   >;
   stats: {
     totalSessions: number;
+    heldSessionsCount?: number;
     presentCount: number;
     lateCount?: number;
     sickCount: number;
     excusedCount: number;
     absentCount: number;
+    unrecordedCount?: number;
     percentage: number;
   };
 }
@@ -56,9 +58,11 @@ export interface AttendanceOverviewData {
     meetingNumber: number;
     sessionDate: string;
     topic: string | null;
+    isOpen: boolean;
   }>;
   students: StudentAttendanceRow[];
   averageAttendancePercent: number;
+  heldSessionsCount?: number;
 }
 
 export async function getClassAttendanceOverview(
@@ -132,13 +136,23 @@ export async function getClassAttendanceOverview(
     recordMap.set(`${r.studentId}:${r.sessionId}`, r);
   }
 
+  // Calculate held sessions (sessions where isOpen is true OR at least one student has an attendance record)
+  const heldSessionIds = new Set<string>();
+  for (const sess of sessions) {
+    if (sess.isOpen) heldSessionIds.add(sess.id);
+  }
+  for (const r of records) {
+    heldSessionIds.add(r.sessionId);
+  }
+  const totalHeldSessions = heldSessionIds.size;
+
   const studentRows: StudentAttendanceRow[] = [];
   let totalPercentSum = 0;
 
   for (const st of enrolledStudents) {
     const studentRecords: Record<
       string,
-      { status: "present" | "late" | "sick" | "excused" | "absent"; note: string | null }
+      { status: "present" | "late" | "sick" | "excused" | "absent" | null; note: string | null }
     > = {};
 
     let presentCount = 0;
@@ -146,10 +160,11 @@ export async function getClassAttendanceOverview(
     let sickCount = 0;
     let excusedCount = 0;
     let absentCount = 0;
+    let unrecordedCount = 0;
 
     for (const sess of sessions) {
       const rec = recordMap.get(`${st.studentUserId}:${sess.id}`);
-      const status = rec ? rec.status : "absent";
+      const status = rec ? rec.status : null;
 
       studentRecords[sess.id] = {
         status,
@@ -160,13 +175,15 @@ export async function getClassAttendanceOverview(
       else if (status === "late") lateCount++;
       else if (status === "sick") sickCount++;
       else if (status === "excused") excusedCount++;
-      else absentCount++;
+      else if (status === "absent") absentCount++;
+      else unrecordedCount++;
     }
 
-    const totalSessions = sessions.length;
+    const totalSessions = sessions.length; // Full 16 sessions
+    const denominator = totalHeldSessions > 0 ? totalHeldSessions : 1;
     const percentage =
-      totalSessions > 0
-        ? Math.round(((presentCount + lateCount) / totalSessions) * 100 * 100) / 100
+      totalHeldSessions > 0
+        ? Math.round(((presentCount + lateCount) / denominator) * 100 * 100) / 100
         : 100;
 
     totalPercentSum += percentage;
@@ -178,11 +195,13 @@ export async function getClassAttendanceOverview(
       records: studentRecords,
       stats: {
         totalSessions,
+        heldSessionsCount: totalHeldSessions,
         presentCount,
         lateCount,
         sickCount,
         excusedCount,
         absentCount,
+        unrecordedCount,
         percentage,
       },
     });
@@ -208,9 +227,11 @@ export async function getClassAttendanceOverview(
       meetingNumber: s.meetingNumber,
       sessionDate: s.sessionDate,
       topic: s.topic,
+      isOpen: s.isOpen ?? false,
     })),
     students: studentRows,
     averageAttendancePercent,
+    heldSessionsCount: totalHeldSessions,
   };
 }
 
@@ -242,28 +263,10 @@ export async function createAttendanceSession(
     meetingNumber,
     sessionDate,
     topic: topic?.trim() || null,
+    isOpen: false,
   });
 
-  // Automatically create default 'present' records for all enrolled students
-  const enrolledStudents = await db
-    .select({ studentUserId: enrollments.studentId })
-    .from(enrollments)
-    .where(
-      and(
-        eq(enrollments.classId, classId),
-        eq(enrollments.enrollmentStatus, "active")
-      )
-    );
-
-  for (const st of enrolledStudents) {
-    await db.insert(attendanceRecords).values({
-      id: randomUUID(),
-      sessionId: newSessionId,
-      studentId: st.studentUserId,
-      status: "present",
-      updatedBy: lecturer.userId,
-    });
-  }
+  // Notice: students are NOT automatically marked present. They remain unrecorded/belum hadir until scanned or marked.
 
   await db.insert(auditLogs).values({
     id: randomUUID(),
@@ -278,11 +281,53 @@ export async function createAttendanceSession(
   return { success: true, sessionId: newSessionId };
 }
 
+export async function toggleAttendanceSessionOpen(
+  classId: string,
+  sessionId: string,
+  isOpen: boolean
+) {
+  const lecturer = await requireLecturer();
+
+  // Verify ownership
+  const [cls] = await db
+    .select({ ownerUserId: courses.lecturerId })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(classes.id, classId))
+    .limit(1);
+
+  if (!cls || cls.ownerUserId !== lecturer.userId) {
+    return { error: "Akses ditolak" };
+  }
+
+  if (isOpen) {
+    // Single active open session: close other sessions in this class
+    await db
+      .update(attendanceSessions)
+      .set({ isOpen: false })
+      .where(eq(attendanceSessions.classId, classId));
+
+    await db
+      .update(attendanceSessions)
+      .set({ isOpen: true })
+      .where(eq(attendanceSessions.id, sessionId));
+  } else {
+    await db
+      .update(attendanceSessions)
+      .set({ isOpen: false })
+      .where(eq(attendanceSessions.id, sessionId));
+  }
+
+  revalidatePath(`/attendance?classId=${classId}`);
+  revalidatePath(`/student/attendance`);
+  return { success: true };
+}
+
 export async function updateStudentAttendance(
   classId: string,
   sessionId: string,
   studentUserId: string,
-  status: "present" | "sick" | "excused" | "absent",
+  status: "present" | "late" | "sick" | "excused" | "absent" | "unrecorded",
   note?: string
 ) {
   const lecturer = await requireLecturer();
@@ -310,12 +355,17 @@ export async function updateStudentAttendance(
     )
     .limit(1);
 
-  if (existing) {
+  if (status === "unrecorded") {
+    // Delete record if exists so student is "belum hadir"
+    if (existing) {
+      await db.delete(attendanceRecords).where(eq(attendanceRecords.id, existing.id));
+    }
+  } else if (existing) {
     await db
       .update(attendanceRecords)
       .set({
         status,
-        note: note !== undefined ? note : existing.note,
+        note: note || existing.note,
         updatedBy: lecturer.userId,
       })
       .where(eq(attendanceRecords.id, existing.id));
@@ -523,18 +573,15 @@ export async function getClassBarcodeData(classId: string) {
     cls.endTime || "10:30"
   );
 
-  // Today's session records
-  const todayDate = new Date().toISOString().split("T")[0];
-  const [todaySession] = await db
+  // Fetch all sessions (16 meetings)
+  const sessions = await db
     .select()
     .from(attendanceSessions)
-    .where(
-      and(
-        eq(attendanceSessions.classId, classId),
-        eq(attendanceSessions.sessionDate, todayDate)
-      )
-    )
-    .limit(1);
+    .where(eq(attendanceSessions.classId, classId))
+    .orderBy(asc(attendanceSessions.meetingNumber));
+
+  // Find currently open session (latest opened)
+  const activeSession = sessions.slice().reverse().find((s) => s.isOpen) || sessions[0] || null;
 
   let attendedStudents: Array<{
     name: string;
@@ -544,7 +591,7 @@ export async function getClassBarcodeData(classId: string) {
     scannedAt: Date | null;
   }> = [];
 
-  if (todaySession) {
+  if (activeSession) {
     attendedStudents = await db
       .select({
         name: students.name,
@@ -555,7 +602,7 @@ export async function getClassBarcodeData(classId: string) {
       })
       .from(attendanceRecords)
       .innerJoin(students, eq(attendanceRecords.studentId, students.id))
-      .where(eq(attendanceRecords.sessionId, todaySession.id))
+      .where(eq(attendanceRecords.sessionId, activeSession.id))
       .orderBy(desc(attendanceRecords.scannedAt));
   }
 
@@ -570,6 +617,22 @@ export async function getClassBarcodeData(classId: string) {
       campusLongitude: parseFloat(cls.campusLongitude || "107.60981"),
     },
     timeWindow,
+    sessions: sessions.map((s) => ({
+      id: s.id,
+      meetingNumber: s.meetingNumber,
+      sessionDate: s.sessionDate,
+      topic: s.topic,
+      isOpen: s.isOpen ?? false,
+    })),
+    activeSession: activeSession
+      ? {
+          id: activeSession.id,
+          meetingNumber: activeSession.meetingNumber,
+          sessionDate: activeSession.sessionDate,
+          topic: activeSession.topic,
+          isOpen: activeSession.isOpen ?? false,
+        }
+      : null,
     attendedStudents,
   };
 }
@@ -667,50 +730,32 @@ export async function scanStudentQrAttendance(input: {
     ? "present"
     : (timeWindow.attendanceStatusIfScanned || "present");
 
-  // 5. Find or create today's session
-  const todayDate = new Date().toISOString().split("T")[0];
-  let [todaySession] = await db
+  // 5. User Requirement: Otomatis hadir di saat pertemuan terakhir yang di-open oleh dosen
+  const [openSession] = await db
     .select()
     .from(attendanceSessions)
     .where(
       and(
         eq(attendanceSessions.classId, cls.id),
-        eq(attendanceSessions.sessionDate, todayDate)
+        eq(attendanceSessions.isOpen, true)
       )
     )
+    .orderBy(desc(attendanceSessions.meetingNumber))
     .limit(1);
 
-  if (!todaySession) {
-    const existingSessions = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(attendanceSessions)
-      .where(eq(attendanceSessions.classId, cls.id));
-
-    const nextMeeting = (existingSessions[0]?.count || 0) + 1;
-    const newSessionId = randomUUID();
-
-    await db.insert(attendanceSessions).values({
-      id: newSessionId,
-      classId: cls.id,
-      meetingNumber: nextMeeting,
-      sessionDate: todayDate,
-      topic: `Pertemuan Ke-${nextMeeting}`,
-    });
-
-    [todaySession] = await db
-      .select()
-      .from(attendanceSessions)
-      .where(eq(attendanceSessions.id, newSessionId))
-      .limit(1);
+  if (!openSession) {
+    return {
+      error: "Sesi presensi belum dibuka oleh dosen untuk pertemuan saat ini. Silakan tunggu hingga dosen mengaktifkan/membuka pertemuan di kelas.",
+    };
   }
 
-  // 6. Check existing attendance record
+  // 6. Check existing attendance record for this open session
   const [existingRecord] = await db
     .select()
     .from(attendanceRecords)
     .where(
       and(
-        eq(attendanceRecords.sessionId, todaySession.id),
+        eq(attendanceRecords.sessionId, openSession.id),
         eq(attendanceRecords.studentId, student.userId)
       )
     )
@@ -724,7 +769,8 @@ export async function scanStudentQrAttendance(input: {
         success: true,
         alreadyRecorded: true,
         status: existingRecord.status,
-        message: `Anda sudah tercatat melakukan presensi hari ini (${existingRecord.status === "present" ? "HADIR" : "TERLAMBAT"}).`,
+        meetingNumber: openSession.meetingNumber,
+        message: `Anda sudah tercatat melakukan presensi untuk Pertemuan Ke-${openSession.meetingNumber} (${existingRecord.status === "present" ? "HADIR" : "TERLAMBAT"}).`,
         className: cls.displayName,
         distanceMeters,
       };
@@ -744,7 +790,7 @@ export async function scanStudentQrAttendance(input: {
   } else {
     await db.insert(attendanceRecords).values({
       id: randomUUID(),
-      sessionId: todaySession.id,
+      sessionId: openSession.id,
       studentId: student.userId,
       status: finalStatus,
       latitude: input.latitude.toFixed(7),
@@ -764,11 +810,12 @@ export async function scanStudentQrAttendance(input: {
     status: finalStatus,
     className: cls.displayName,
     courseCode: cls.courseCode,
+    meetingNumber: openSession.meetingNumber,
     distanceMeters,
     message:
       finalStatus === "present"
-        ? "Presensi Berhasil: Anda tercatat HADIR tepat waktu!"
-        : "Presensi Berhasil: Anda tercatat TERLAMBAT (lewat 15 menit pertama).",
+        ? `Presensi Berhasil: Anda tercatat HADIR untuk Pertemuan Ke-${openSession.meetingNumber} tepat waktu!`
+        : `Presensi Berhasil: Anda tercatat TERLAMBAT untuk Pertemuan Ke-${openSession.meetingNumber} (lewat 15 menit pertama).`,
   };
 }
 
@@ -821,6 +868,21 @@ export async function getStudentAttendanceHubData() {
     .where(eq(attendanceRecords.studentId, student.userId))
     .orderBy(desc(attendanceSessions.sessionDate), desc(attendanceRecords.scannedAt));
 
+  // Fetch active open session for each class
+  const openSessions = await db
+    .select({
+      classId: attendanceSessions.classId,
+      meetingNumber: attendanceSessions.meetingNumber,
+      topic: attendanceSessions.topic,
+    })
+    .from(attendanceSessions)
+    .where(eq(attendanceSessions.isOpen, true));
+
+  const openSessionMap = new Map<string, typeof openSessions[0]>();
+  for (const os of openSessions) {
+    openSessionMap.set(os.classId, os);
+  }
+
   const classesWithStatus = enrolled.map((cls) => {
     const timeWindow = evaluateAttendanceTimeWindow(
       cls.startTime || "09:00",
@@ -831,12 +893,15 @@ export async function getStudentAttendanceHubData() {
       (r) => r.classId === cls.classId && r.sessionDate === todayDate
     );
 
+    const activeOpen = openSessionMap.get(cls.classId);
+
     return {
       ...cls,
       startTime: cls.startTime || "09:00",
       endTime: cls.endTime || "10:30",
       timeWindow,
       todayStatus: todayRecord ? todayRecord.status : null,
+      activeOpenMeeting: activeOpen ? activeOpen.meetingNumber : null,
     };
   });
 

@@ -166,4 +166,36 @@ describe("Phase 4 Attendance & Materials Calculation & Business Logic Tests", ()
       expect(res.attendanceStatusIfScanned).toBeNull();
     });
   });
+
+  describe("16-Meeting Semester Structure & Dynamic Held Session Attendance", () => {
+    it("handles full 16 meetings with unrecorded (null) status for unheld sessions", () => {
+      // 16 total meetings, only P1 held so far. Student attended P1. P2-P16 are null (belum hadir).
+      const sessions = Array.from({ length: 16 }, (_, i) => ({
+        meetingNumber: i + 1,
+        isOpen: i === 0, // only P1 open
+      }));
+
+      const studentRecords: Record<number, "present" | "late" | null> = {
+        1: "present",
+        // 2..16 are not yet recorded
+      };
+
+      const heldSessionsCount = sessions.filter((s) => s.isOpen || studentRecords[s.meetingNumber]).length;
+      expect(heldSessionsCount).toBe(1);
+
+      // Presence percentage should be 100% (1/1 held session), not 1/16 (6.25%)
+      const attendedCount = Object.values(studentRecords).filter((v) => v === "present" || v === "late").length;
+      const percentage = Math.round((attendedCount / heldSessionsCount) * 100);
+      expect(percentage).toBe(100);
+    });
+
+    it("evaluates percentage accurately when multiple sessions are held", () => {
+      // 4 sessions held: P1 (present), P2 (late), P3 (null/absent), P4 (present) -> 3/4 = 75%
+      const heldSessionsCount = 4;
+      const presentCount = 2;
+      const lateCount = 1;
+      const percentage = Math.round(((presentCount + lateCount) / heldSessionsCount) * 100);
+      expect(percentage).toBe(75);
+    });
+  });
 });

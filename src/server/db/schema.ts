@@ -471,6 +471,7 @@ export const attendanceSessions = mysqlTable(
     meetingNumber: smallint("meeting_number").notNull(),
     sessionDate: date("session_date", { mode: "string" }).notNull(),
     topic: varchar("topic", { length: 180 }),
+    isOpen: boolean("is_open").default(false).notNull(),
     createdAt: datetime("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

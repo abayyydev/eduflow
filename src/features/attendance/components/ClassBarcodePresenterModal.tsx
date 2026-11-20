@@ -14,7 +14,7 @@ import {
   Sparkles,
   RefreshCw,
 } from "lucide-react";
-import { getClassBarcodeData } from "../actions";
+import { getClassBarcodeData, toggleAttendanceSessionOpen } from "../actions";
 import { evaluateAttendanceTimeWindow } from "../attendance-utils";
 import { Button } from "@/components/ui/button";
 
@@ -31,6 +31,8 @@ export function ClassBarcodePresenterModal({
 }: ClassBarcodePresenterModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [data, setData] = useState<any>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+  const [isTogglingSession, setIsTogglingSession] = useState(false);
   const [isSimulation, setIsSimulation] = useState(false);
   const [simulatedWindow, setSimulatedWindow] = useState<"present" | "late">("present");
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,9 @@ export function ClassBarcodePresenterModal({
     try {
       const res = await getClassBarcodeData(classId);
       setData(res);
+      if (!selectedSessionId && res?.activeSession?.id) {
+        setSelectedSessionId(res.activeSession.id);
+      }
       setLoading(false);
     } catch (e) {
       console.error(e);
@@ -55,6 +60,13 @@ export function ClassBarcodePresenterModal({
       return () => clearInterval(interval);
     }
   }, [isOpen, classId]);
+
+  const handleToggleActiveSession = async (sessId: string, currentOpen: boolean) => {
+    setIsTogglingSession(true);
+    await toggleAttendanceSessionOpen(classId, sessId, !currentOpen);
+    await fetchData();
+    setIsTogglingSession(false);
+  };
 
   // Render QR Code onto canvas
   useEffect(() => {
@@ -117,6 +129,46 @@ export function ClassBarcodePresenterModal({
           </p>
         </div>
 
+        {/* Active Meeting Session Controls */}
+        <div className="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/90 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-slate-800 shrink-0">Sesi Pertemuan:</span>
+            <select
+              value={selectedSessionId || data?.activeSession?.id || ""}
+              onChange={(e) => setSelectedSessionId(e.target.value)}
+              className="rounded-xl border border-slate-300 bg-white px-2.5 py-1 font-bold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 max-w-[260px] truncate"
+            >
+              {data?.sessions?.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  P{s.meetingNumber} ({s.sessionDate.slice(5)}) - {s.isOpen ? "🟢 DIBUKA (Aktif)" : "⚪ TUTUP"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Open / Close Session Button */}
+          {(() => {
+            const currentSelected = data?.sessions?.find(
+              (s: any) => s.id === (selectedSessionId || data?.activeSession?.id)
+            );
+            const isCurrentlyOpen = currentSelected?.isOpen;
+            return (
+              <Button
+                type="button"
+                variant={isCurrentlyOpen ? "destructive" : "primary"}
+                size="sm"
+                disabled={isTogglingSession || !currentSelected}
+                onClick={() => handleToggleActiveSession(currentSelected.id, !!isCurrentlyOpen)}
+                className={`rounded-xl shrink-0 font-extrabold text-xs ${
+                  !isCurrentlyOpen ? "bg-emerald-600 hover:bg-emerald-700" : ""
+                }`}
+              >
+                {isCurrentlyOpen ? "Tutup Sesi Ini" : "Buka Sesi Ini untuk Barcode"}
+              </Button>
+            );
+          })()}
+        </div>
+
         {/* Real-time Status Banner */}
         <div
           className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold transition-all ${
@@ -172,12 +224,17 @@ export function ClassBarcodePresenterModal({
               <div className="flex items-center justify-between font-bold text-slate-800">
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-teal-600" />
-                  <span>Presensi Hari Ini</span>
+                  <span>Presensi P{data?.activeSession?.meetingNumber || 1}</span>
                 </div>
                 <span className="text-teal-700 font-extrabold">
                   {data?.attendedStudents?.length || 0} Mahasiswa
                 </span>
               </div>
+              {!data?.activeSession?.isOpen && (
+                <p className="text-[10px] text-amber-700 bg-amber-50 p-1.5 rounded-lg border border-amber-200 font-semibold leading-tight">
+                  Perhatian: Sesi ini belum dibuka. Klik &ldquo;Buka Sesi Ini&rdquo; agar mahasiswa dapat memindai barcode.
+                </p>
+              )}
               <div className="max-h-28 overflow-y-auto space-y-1 text-[11px] text-slate-600">
                 {data?.attendedStudents?.length === 0 ? (
                   <p className="text-slate-400 italic">Menunggu mahasiswa scan...</p>
