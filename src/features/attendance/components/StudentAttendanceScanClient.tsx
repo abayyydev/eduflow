@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { scanStudentQrAttendance } from "../actions";
+import {
+  scanStudentQrAttendance,
+} from "../actions";
 import { calculateDistanceMeters } from "../attendance-utils";
 
 interface StudentAttendanceScanProps {
@@ -271,19 +273,17 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
           <Card className="p-6 rounded-3xl border-white/80 bg-white/70 backdrop-blur-md shadow-sm space-y-5">
             {/* GPS Campus Geofence Status Pill */}
             <div
-              className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs ${
-                isInsideCampus || isSimulation
-                  ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
-                  : "bg-red-50/80 border-red-200 text-red-900"
-              }`}
+              className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs ${isInsideCampus || isSimulation
+                ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                : "bg-red-50/80 border-red-200 text-red-900"
+                }`}
             >
               <div className="flex items-center gap-3">
                 <div
-                  className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
-                    isInsideCampus || isSimulation
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
+                  className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${isInsideCampus || isSimulation
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-red-100 text-red-700"
+                    }`}
                 >
                   <MapPin className="w-5 h-5" />
                 </div>
@@ -374,11 +374,10 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
               {/* Simulation Mode Toggle */}
               <button
                 onClick={() => setIsSimulation(!isSimulation)}
-                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
-                  isSimulation
-                    ? "bg-amber-50 border-amber-300 text-amber-800"
-                    : "bg-slate-100/70 border-slate-200 text-slate-600 hover:bg-slate-200/70"
-                }`}
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${isSimulation
+                  ? "bg-amber-50 border-amber-300 text-amber-800"
+                  : "bg-slate-100/70 border-slate-200 text-slate-600 hover:bg-slate-200/70"
+                  }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span>{isSimulation ? "Mode Uji Coba: Aktif" : "Uji Coba Mandiri"}</span>
@@ -420,11 +419,10 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
             {/* Result Alert Box */}
             {scanResult && (
               <div
-                className={`p-4 rounded-2xl border text-xs font-bold flex items-start gap-3 ${
-                  scanResult.success
-                    ? "bg-teal-50 border-teal-200 text-teal-900"
-                    : "bg-red-50 border-red-200 text-red-900"
-                }`}
+                className={`p-4 rounded-2xl border text-xs font-bold flex items-start gap-3 ${scanResult.success
+                  ? "bg-teal-50 border-teal-200 text-teal-900"
+                  : "bg-red-50 border-red-200 text-red-900"
+                  }`}
               >
                 {scanResult.success ? (
                   <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
@@ -496,11 +494,10 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
                     setSelectedClassId(cls.classId);
                     if (cls.qrCodeToken) setManualToken(cls.qrCodeToken);
                   }}
-                  className={`p-3 rounded-2xl border text-xs cursor-pointer transition ${
-                    selectedClassId === cls.classId
-                      ? "bg-cyan-50 border-cyan-300 shadow-xs"
-                      : "bg-white/60 border-slate-200/70 hover:bg-white"
-                  }`}
+                  className={`p-3 rounded-2xl border text-xs cursor-pointer transition ${selectedClassId === cls.classId
+                    ? "bg-cyan-50 border-cyan-300 shadow-xs"
+                    : "bg-white/60 border-slate-200/70 hover:bg-white"
+                    }`}
                 >
                   <p className="font-bold text-slate-900 line-clamp-1">{cls.displayName}</p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
@@ -516,19 +513,18 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
                       )}
                     </div>
                     <span
-                      className={`px-1.5 py-0.5 rounded font-extrabold ${
-                        cls.todayStatus === "present"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : cls.todayStatus === "late"
+                      className={`px-1.5 py-0.5 rounded font-extrabold ${cls.todayStatus === "present"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : cls.todayStatus === "late"
                           ? "bg-amber-100 text-amber-800"
                           : "bg-slate-100 text-slate-600"
-                      }`}
+                        }`}
                     >
                       {cls.todayStatus === "present"
                         ? "Hadir ✓"
                         : cls.todayStatus === "late"
-                        ? "Terlambat"
-                        : "Belum Absen"}
+                          ? "Terlambat"
+                          : "Belum Absen"}
                     </span>
                   </div>
                 </div>
@@ -576,19 +572,18 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
                     <td className="py-2.5 px-3 text-slate-600">{r.sessionDate}</td>
                     <td className="py-2.5 px-3">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-md font-extrabold text-[11px] ${
-                          r.status === "present"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : r.status === "late"
+                        className={`inline-block px-2 py-0.5 rounded-md font-extrabold text-[11px] ${r.status === "present"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : r.status === "late"
                             ? "bg-amber-50 text-amber-700 border border-amber-200"
                             : "bg-red-50 text-red-700 border border-red-200"
-                        }`}
+                          }`}
                       >
                         {r.status === "present"
                           ? "Hadir"
                           : r.status === "late"
-                          ? "Terlambat"
-                          : r.status.toUpperCase()}
+                            ? "Terlambat"
+                            : r.status.toUpperCase()}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-slate-500 font-mono">
@@ -604,3 +599,4 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
     </div>
   );
 }
+

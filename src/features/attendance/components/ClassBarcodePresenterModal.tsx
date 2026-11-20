@@ -93,15 +93,15 @@ export function ClassBarcodePresenterModal({
 
   const timeWindow = isSimulation
     ? {
-        status: simulatedWindow === "present" ? "open_present" : "open_late",
-        label: simulatedWindow === "present" ? "Terbuka: Hadir" : "Terbuka: Terlambat",
-        isAllowedToScan: true,
-        message:
-          simulatedWindow === "present"
-            ? "Presensi dibuka tepat waktu (15 menit pertama = HADIR)."
-            : "Presensi dibuka terlambat (Status: TERLAMBAT).",
-        minutesRemaining: 15,
-      }
+      status: simulatedWindow === "present" ? "open_present" : "open_late",
+      label: simulatedWindow === "present" ? "Terbuka: Hadir" : "Terbuka: Terlambat",
+      isAllowedToScan: true,
+      message:
+        simulatedWindow === "present"
+          ? "Presensi dibuka tepat waktu (15 menit pertama = HADIR)."
+          : "Presensi dibuka terlambat (Status: TERLAMBAT).",
+      minutesRemaining: 15,
+    }
     : (data?.timeWindow || evaluateAttendanceTimeWindow());
 
   return (
@@ -171,13 +171,12 @@ export function ClassBarcodePresenterModal({
 
         {/* Real-time Status Banner */}
         <div
-          className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold transition-all ${
-            timeWindow.status === "open_present"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-              : timeWindow.status === "open_late"
+          className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold transition-all ${timeWindow.status === "open_present"
+            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+            : timeWindow.status === "open_late"
               ? "bg-amber-50 text-amber-800 border-amber-200"
               : "bg-red-50 text-red-800 border-red-200"
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2.5">
             <Clock className="w-5 h-5 shrink-0" />
@@ -192,8 +191,8 @@ export function ClassBarcodePresenterModal({
               {timeWindow.status === "open_present"
                 ? "🟢 15 Mnt Pertama"
                 : timeWindow.status === "open_late"
-                ? "🟡 Terlambat"
-                : "🔴 Selesai/Tutup"}
+                  ? "🟡 Terlambat"
+                  : "🔴 Selesai/Tutup"}
             </span>
           </div>
         </div>
@@ -243,11 +242,10 @@ export function ClassBarcodePresenterModal({
                     <div key={idx} className="flex items-center justify-between py-0.5 border-b border-slate-100">
                       <span className="truncate max-w-[140px] font-semibold">{st.name}</span>
                       <span
-                        className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                          st.status === "present"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
+                        className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${st.status === "present"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
+                          }`}
                       >
                         {st.status === "present" ? "Hadir" : "Terlambat"}
                       </span>
@@ -266,11 +264,10 @@ export function ClassBarcodePresenterModal({
             <span className="font-semibold text-slate-600">Mode Uji Coba / Simulasi:</span>
             <button
               onClick={() => setIsSimulation(!isSimulation)}
-              className={`px-2.5 py-1 rounded-lg font-bold border transition ${
-                isSimulation
-                  ? "bg-amber-50 border-amber-300 text-amber-800"
-                  : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
-              }`}
+              className={`px-2.5 py-1 rounded-lg font-bold border transition ${isSimulation
+                ? "bg-amber-50 border-amber-300 text-amber-800"
+                : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                }`}
             >
               {isSimulation ? "Simulasi Aktif" : "Gunakan Jam Nyata"}
             </button>
@@ -295,3 +292,4 @@ export function ClassBarcodePresenterModal({
     </div>
   );
 }
+

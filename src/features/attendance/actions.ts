@@ -18,6 +18,10 @@ import { requireLecturer, requireStudent } from "@/server/auth/session";
 import { eq, and, sql, asc, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
+import {
+  calculateDistanceMeters,
+  evaluateAttendanceTimeWindow,
+} from "./attendance-utils";
 
 export interface StudentAttendanceRow {
   studentUserId: string;
@@ -34,7 +38,7 @@ export interface StudentAttendanceRow {
     totalSessions: number;
     heldSessionsCount?: number;
     presentCount: number;
-    lateCount?: number;
+    lateCount: number;
     sickCount: number;
     excusedCount: number;
     absentCount: number;
@@ -121,14 +125,14 @@ export async function getClassAttendanceOverview(
   const records =
     sessionIds.length > 0
       ? await db
-          .select()
-          .from(attendanceRecords)
-          .where(
-            sql`${attendanceRecords.sessionId} IN (${sql.join(
-              sessionIds.map((id) => sql`${id}`),
-              sql`, `
-            )})`
-          )
+        .select()
+        .from(attendanceRecords)
+        .where(
+          sql`${attendanceRecords.sessionId} IN (${sql.join(
+            sessionIds.map((id) => sql`${id}`),
+            sql`, `
+          )})`
+        )
       : [];
 
   const recordMap = new Map<string, typeof records[0]>();
@@ -522,14 +526,26 @@ export async function syncAttendanceToGradebook(classId: string) {
   return { success: true, count: overview.students.length };
 }
 
-import {
-  calculateDistanceMeters,
-  evaluateAttendanceTimeWindow,
-} from "./attendance-utils";
-
 // ---------------------------------------------------------------------------
 // Barcode / QR Code Attendance & Campus Geofencing System
 // ---------------------------------------------------------------------------
+
+// Re-export async wrappers for backward compatibility if called from client
+export async function calculateDistanceMetersAsync(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): Promise<number> {
+  return calculateDistanceMeters(lat1, lon1, lat2, lon2);
+}
+
+export async function evaluateAttendanceTimeWindowAsync(
+  startTimeStr: string = "09:00",
+  endTimeStr: string = "10:30"
+) {
+  return evaluateAttendanceTimeWindow(startTimeStr, endTimeStr);
+}
 
 export async function getClassBarcodeData(classId: string) {
   const lecturer = await requireLecturer();
