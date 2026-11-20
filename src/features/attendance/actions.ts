@@ -642,12 +642,12 @@ export async function getClassBarcodeData(classId: string) {
     })),
     activeSession: activeSession
       ? {
-          id: activeSession.id,
-          meetingNumber: activeSession.meetingNumber,
-          sessionDate: activeSession.sessionDate,
-          topic: activeSession.topic,
-          isOpen: activeSession.isOpen ?? false,
-        }
+        id: activeSession.id,
+        meetingNumber: activeSession.meetingNumber,
+        sessionDate: activeSession.sessionDate,
+        topic: activeSession.topic,
+        isOpen: activeSession.isOpen ?? false,
+      }
       : null,
     attendedStudents,
   };

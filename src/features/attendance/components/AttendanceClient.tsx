@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
-import { Pagination } from "@/components/ui/pagination";
 import {
   Plus,
   RefreshCw,
@@ -50,7 +49,6 @@ export function AttendanceClient({
   // Sync state if initialData changes
   useEffect(() => {
     setData(initialData);
-    setCurrentPage(1);
   }, [initialData]);
 
   // Form state
@@ -63,8 +61,6 @@ export function AttendanceClient({
   const [newTopic, setNewTopic] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
 
   const isLocked = data.classInfo.gradingLockedAt !== null;
 
@@ -76,12 +72,6 @@ export function AttendanceClient({
       st.studentNumber.toLowerCase().includes(q)
     );
   });
-
-  const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,10 +377,7 @@ export function AttendanceClient({
               type="text"
               placeholder="Cari NIM atau nama..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-[#E4E9F2] pl-8 pr-3 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
             />
           </div>
@@ -488,7 +475,7 @@ export function AttendanceClient({
             </thead>
 
             <tbody className="divide-y divide-[#E4E9F2]">
-              {paginatedStudents.map((st) => (
+              {filteredStudents.map((st) => (
                 <tr key={st.studentUserId} className="hover:bg-[#F6F8FC]/50 transition-colors">
                   <td className="py-2.5 px-4 font-medium text-[#172033] sticky left-0 z-10 bg-white tabular-nums">
                     {st.studentNumber}
@@ -562,13 +549,15 @@ export function AttendanceClient({
           </table>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          totalItems={filteredStudents.length}
-          pageSize={pageSize}
-        />
+        <div className="p-3.5 border-t border-[#E4E9F2] bg-[#F6F8FC]/40 flex flex-col sm:flex-row items-center justify-between text-xs text-[#667085] gap-2">
+          <span>
+            Menampilkan seluruh <strong className="text-[#172033]">{filteredStudents.length}</strong> mahasiswa
+            {searchQuery && ` (difilter dari ${data.students.length} total)`}
+          </span>
+          <span className="text-[11px] text-[#8C95A6]">
+            Matriks 16 Pertemuan • Data otomatis tersimpan saat diubah
+          </span>
+        </div>
       </Card>
 
       {/* Modal Buat Sesi Pertemuan */}
