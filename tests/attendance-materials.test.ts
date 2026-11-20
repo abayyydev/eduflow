@@ -1,4 +1,8 @@
 import { describe, it, expect } from "vitest";
+import {
+  calculateDistanceMeters,
+  evaluateAttendanceTimeWindow,
+} from "@/features/attendance/attendance-utils";
 
 describe("Phase 4 Attendance & Materials Calculation & Business Logic Tests", () => {
   // Formula helper matching attendance business rules
@@ -85,5 +89,81 @@ describe("Phase 4 Attendance & Materials Calculation & Business Logic Tests", ()
 
     expect(percentage).toBe("87.50");
     expect(feedback).toBe("Kehadiran: 7 dari 8 sesi pertemuan.");
+  });
+
+  describe("Campus Geofencing Distance Calculation", () => {
+    it("returns 0 meters when student is at identical coordinate", () => {
+      const dist = calculateDistanceMeters(-6.914744, 107.60981, -6.914744, 107.60981);
+      expect(dist).toBe(0);
+    });
+
+    it("accurately detects nearby student within campus radius (e.g. 50 meters)", () => {
+      // Small offset in latitude (~55 meters)
+      const dist = calculateDistanceMeters(-6.914744, 107.60981, -6.915244, 107.60981);
+      expect(dist).toBeGreaterThan(40);
+      expect(dist).toBeLessThan(70);
+    });
+
+    it("detects student outside campus boundary (e.g. at home / distant location)", () => {
+      // 10km away
+      const dist = calculateDistanceMeters(-6.914744, 107.60981, -6.994744, 107.60981);
+      expect(dist).toBeGreaterThan(5000);
+    });
+  });
+
+  describe("Automated Attendance Time Window Logic (15-Minute Rules)", () => {
+    it("evaluates early before class as not_started", () => {
+      // Class: 09:00 - 10:30. Current time: 08:30
+      const simulatedNow = new Date("2026-11-20T08:30:00");
+      const res = evaluateAttendanceTimeWindow("09:00", "10:30", simulatedNow);
+
+      expect(res.status).toBe("not_started");
+      expect(res.isAllowedToScan).toBe(false);
+      expect(res.attendanceStatusIfScanned).toBeNull();
+      expect(res.minutesRemaining).toBe(30);
+    });
+
+    it("evaluates active class in first 15 minutes as open_present", () => {
+      // Class: 09:00 - 10:30. Current time: 09:10 (10 minutes in)
+      const simulatedNow = new Date("2026-11-20T09:10:00");
+      const res = evaluateAttendanceTimeWindow("09:00", "10:30", simulatedNow);
+
+      expect(res.status).toBe("open_present");
+      expect(res.isAllowedToScan).toBe(true);
+      expect(res.attendanceStatusIfScanned).toBe("present");
+      expect(res.minutesRemaining).toBe(5); // 5 min until 15 min mark
+    });
+
+    it("evaluates after 15 minutes as open_late", () => {
+      // Class: 09:00 - 10:30. Current time: 09:30 (30 minutes in)
+      const simulatedNow = new Date("2026-11-20T09:30:00");
+      const res = evaluateAttendanceTimeWindow("09:00", "10:30", simulatedNow);
+
+      expect(res.status).toBe("open_late");
+      expect(res.isAllowedToScan).toBe(true);
+      expect(res.attendanceStatusIfScanned).toBe("late");
+      expect(res.minutesRemaining).toBe(45); // until 10:15 (15 min before end)
+    });
+
+    it("evaluates 15 minutes before class end as closed", () => {
+      // Class: 09:00 - 10:30. Current time: 10:20 (10 minutes before 10:30 end)
+      const simulatedNow = new Date("2026-11-20T10:20:00");
+      const res = evaluateAttendanceTimeWindow("09:00", "10:30", simulatedNow);
+
+      expect(res.status).toBe("closed");
+      expect(res.isAllowedToScan).toBe(false);
+      expect(res.attendanceStatusIfScanned).toBeNull();
+      expect(res.minutesRemaining).toBe(10); // 10 min left in lecture
+    });
+
+    it("evaluates after class end as finished", () => {
+      // Class: 09:00 - 10:30. Current time: 11:00
+      const simulatedNow = new Date("2026-11-20T11:00:00");
+      const res = evaluateAttendanceTimeWindow("09:00", "10:30", simulatedNow);
+
+      expect(res.status).toBe("finished");
+      expect(res.isAllowedToScan).toBe(false);
+      expect(res.attendanceStatusIfScanned).toBeNull();
+    });
   });
 });

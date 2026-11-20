@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -13,8 +13,7 @@ import {
   User,
   LogOut,
   Bell,
-  Menu,
-  X,
+  QrCode,
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
@@ -29,6 +28,7 @@ interface StudentLayoutProps {
 
 const navItems = [
   { label: "Beranda", href: "/student/dashboard", icon: Home },
+  { label: "Presensi", href: "/student/attendance", icon: QrCode },
   { label: "Kelas Saya", href: "/student/classes", icon: GraduationCap },
   { label: "Materi", href: "/student/materials", icon: BookOpen },
   { label: "Tugas", href: "/student/assignments", icon: FileCheck2 },
@@ -38,124 +38,168 @@ const navItems = [
 
 export const StudentLayout: React.FC<StudentLayoutProps> = ({ user, children }) => {
   const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#F6F8FC] flex flex-col">
-      {/* Header Nav */}
-      <header className="sticky top-0 z-40 bg-white border-b border-[#E4E9F2] shadow-xs">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/student/dashboard" className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-[#2457D6] flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                E
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-base text-[#172033] tracking-tight leading-tight">
-                  EDUFlow
-                </span>
-                <span className="text-[10px] text-[#667085] font-medium uppercase tracking-wider">
-                  Portal Mahasiswa
-                </span>
-              </div>
-            </Link>
+    <div className="min-h-screen flex flex-col bg-slate-50/60">
+      {/* ========================================================================= */}
+      {/* 1. DESKTOP SIDEBAR (md:flex) */}
+      {/* ========================================================================= */}
+      <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 z-40 bg-white/80 backdrop-blur-xl border-r border-white/80 shadow-sm p-4 justify-between">
+        <div className="space-y-6">
+          {/* Brand Logo */}
+          <Link href="/student/dashboard" className="flex items-center gap-3 px-2 py-1">
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-cyan-500/20">
+              E
+            </div>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-base text-slate-900 tracking-tight leading-tight">
+                EDUFlow
+              </span>
+              <span className="text-[10px] text-cyan-700 font-bold uppercase tracking-wider">
+                Portal Mahasiswa
+              </span>
+            </div>
+          </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-[#EEF3FF] text-[#2457D6] font-semibold"
-                        : "text-[#667085] hover:bg-[#F6F8FC] hover:text-[#172033]"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+          {/* Navigation Links */}
+          <nav className="space-y-1.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/student/dashboard" && pathname.startsWith(item.href + "/"));
 
-          {/* User Profile & Actions */}
-          <div className="flex items-center gap-3">
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all",
+                    isActive
+                      ? "bg-cyan-500 text-white shadow-sm shadow-cyan-500/30"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  )}
+                >
+                  <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-white" : "text-slate-500")} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* User Card & Logout at bottom of sidebar */}
+        <div className="space-y-3 pt-4 border-t border-slate-200/70">
+          <div className="flex items-center justify-between px-2">
             <ThemeSwitcher />
-
             <Link
               href="/student/notifications"
-              className="p-2 rounded-lg text-[#667085] hover:bg-[#F6F8FC] hover:text-[#172033] relative transition-colors"
+              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 relative transition-colors"
               title="Notifikasi"
             >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#2457D6]" />
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-500" />
             </Link>
+          </div>
 
-            <div className="hidden sm:flex items-center gap-2.5 pl-2 border-l border-[#E4E9F2]">
-              <div className="w-8 h-8 rounded-full bg-[#2457D6]/10 text-[#2457D6] font-semibold flex items-center justify-center text-xs">
+          <div className="p-3 rounded-2xl bg-slate-100/70 border border-slate-200/60 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-8 w-8 rounded-full bg-cyan-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
                 {user.name.charAt(0)}
               </div>
-              <div className="text-left">
-                <p className="text-xs font-semibold text-[#172033] leading-tight">{user.name}</p>
-                <p className="text-[11px] text-[#667085] leading-tight">{user.email}</p>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 truncate">{user.name}</p>
+                <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
               </div>
             </div>
 
             <form action="/api/auth/logout" method="POST">
               <button
                 type="submit"
-                className="p-2 rounded-lg text-[#667085] hover:text-[#C43D4B] hover:bg-[#F6F8FC] transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
                 title="Keluar"
               >
                 <LogOut className="w-4 h-4" />
               </button>
             </form>
-
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-[#667085] hover:bg-[#F6F8FC]"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
+      </aside>
 
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-[#E4E9F2] bg-white px-4 py-3 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium",
-                    isActive
-                      ? "bg-[#EEF3FF] text-[#2457D6] font-semibold"
-                      : "text-[#667085] hover:bg-[#F6F8FC] hover:text-[#172033]"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+      {/* ========================================================================= */}
+      {/* 2. MOBILE TOP BAR (md:hidden) */}
+      {/* ========================================================================= */}
+      <header className="sticky top-0 z-30 md:hidden bg-white/80 backdrop-blur-md border-b border-white/80 px-4 py-3 flex items-center justify-between shadow-xs">
+        <Link href="/student/dashboard" className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            E
           </div>
-        )}
+          <span className="font-extrabold text-sm text-slate-900 tracking-tight">EDUFlow</span>
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher />
+          <Link
+            href="/student/notifications"
+            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 relative transition-colors"
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-cyan-500" />
+          </Link>
+          <div className="h-7 w-7 rounded-full bg-cyan-600 text-white font-bold flex items-center justify-center text-xs">
+            {user.name.charAt(0)}
+          </div>
+        </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-[1440px] w-full mx-auto p-4 sm:p-6">{children}</main>
+      {/* ========================================================================= */}
+      {/* 3. MAIN CONTENT (with desktop left margin & mobile bottom padding) */}
+      {/* ========================================================================= */}
+      <main className="flex-1 md:pl-64 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-[1600px] w-full">
+        {children}
+      </main>
+
+      {/* ========================================================================= */}
+      {/* 4. MOBILE BOTTOM NAVIGATION (md:hidden) */}
+      {/* ========================================================================= */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200/80 shadow-lg px-2 py-1.5 flex items-center justify-around safe-area-bottom">
+        {[
+          { label: "Beranda", href: "/student/dashboard", icon: Home },
+          { label: "Presensi", href: "/student/attendance", icon: QrCode },
+          { label: "Kelas", href: "/student/classes", icon: GraduationCap },
+          { label: "Materi", href: "/student/materials", icon: BookOpen },
+          { label: "Tugas", href: "/student/assignments", icon: FileCheck2 },
+          { label: "Profil", href: "/student/profile", icon: User },
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/student/dashboard" && pathname.startsWith(item.href + "/"));
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all",
+                isActive
+                  ? "text-cyan-600 font-extrabold"
+                  : "text-slate-500 hover:text-slate-900 font-medium"
+              )}
+            >
+              <div
+                className={cn(
+                  "p-1 rounded-lg transition-all",
+                  isActive ? "bg-cyan-50 text-cyan-600" : ""
+                )}
+              >
+                <Icon className={cn("w-4 h-4", isActive ? "stroke-[2.5]" : "stroke-[1.8]")} />
+              </div>
+              <span className="text-[10px] tracking-tight">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 };

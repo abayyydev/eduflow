@@ -16,7 +16,9 @@ import {
   Calendar,
   TrendingUp,
   Download,
+  QrCode,
 } from "lucide-react";
+import { ClassBarcodePresenterModal } from "./ClassBarcodePresenterModal";
 import {
   type AttendanceOverviewData,
   createAttendanceSession,
@@ -39,6 +41,7 @@ export function AttendanceClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
@@ -167,6 +170,15 @@ export function AttendanceClient({
               </option>
             ))}
           </select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsBarcodeModalOpen(true)}
+            className="border-cyan-200 text-cyan-800 bg-cyan-50/60 hover:bg-cyan-100"
+          >
+            <QrCode className="w-4 h-4 mr-1.5 text-cyan-600" /> Tampilkan Barcode Presensi
+          </Button>
 
           <Button
             variant="outline"
@@ -531,6 +543,13 @@ export function AttendanceClient({
           </div>
         </div>
       </Modal>
+
+      {/* Barcode / QR Code Presenter Modal */}
+      <ClassBarcodePresenterModal
+        classId={data.classInfo.id}
+        isOpen={isBarcodeModalOpen}
+        onClose={() => setIsBarcodeModalOpen(false)}
+      />
     </div>
   );
 }

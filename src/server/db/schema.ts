@@ -141,6 +141,13 @@ export const classes = mysqlTable(
     classCode: varchar("class_code", { length: 30 }).notNull(),
     displayName: varchar("display_name", { length: 180 }).notNull(),
     scheduleText: varchar("schedule_text", { length: 180 }),
+    qrCodeToken: varchar("qr_code_token", { length: 100 }),
+    scheduleDay: varchar("schedule_day", { length: 20 }),
+    startTime: varchar("start_time", { length: 10 }),
+    endTime: varchar("end_time", { length: 10 }),
+    campusLatitude: decimal("campus_latitude", { precision: 10, scale: 7 }),
+    campusLongitude: decimal("campus_longitude", { precision: 10, scale: 7 }),
+    campusRadiusMeters: int("campus_radius_meters").default(300),
     status: mysqlEnum("status", ["active", "archived"])
       .default("active")
       .notNull(),
@@ -490,9 +497,13 @@ export const attendanceRecords = mysqlTable(
     studentId: varchar("student_id", { length: 36 })
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
-    status: mysqlEnum("status", ["present", "sick", "excused", "absent"])
+    status: mysqlEnum("status", ["present", "late", "sick", "excused", "absent"])
       .default("absent")
       .notNull(),
+    latitude: decimal("latitude", { precision: 10, scale: 7 }),
+    longitude: decimal("longitude", { precision: 10, scale: 7 }),
+    distanceMeters: int("distance_meters"),
+    scannedAt: datetime("scanned_at"),
     note: varchar("note", { length: 255 }),
     updatedBy: varchar("updated_by", { length: 36 })
       .notNull()

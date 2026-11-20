@@ -46,6 +46,7 @@ import {
   type CurriculumSection,
   type CurriculumMaterialItem,
 } from "@/features/materials/actions";
+import { TipTapWysiwygEditor } from "./TipTapWysiwygEditor";
 
 interface MaterialStudioProps {
   classInfo: {
@@ -316,9 +317,10 @@ export function MaterialStudioClient({
     createNewMaterialInMemory(sections[secIndex].sectionName, type);
   };
 
-  // Stats calculation for article
-  const wordCount = contentBody ? contentBody.trim().split(/\s+/).filter(Boolean).length : 0;
-  const charCount = contentBody ? contentBody.length : 0;
+  // Stats calculation for article (stripped of HTML tags)
+  const plainText = contentBody ? contentBody.replace(/<[^>]*>/g, " ").trim() : "";
+  const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+  const charCount = plainText ? plainText.length : 0;
   const readingTime = Math.max(1, Math.ceil(wordCount / 120));
 
   const embedUrl = externalUrl ? formatEmbedUrl(externalUrl) : "";
@@ -582,156 +584,7 @@ export function MaterialStudioClient({
         {/* RIGHT COLUMN: RICH MATERIAL STUDIO EDITOR */}
         {/* ========================================================================= */}
         <main className="flex-1 min-w-0 bg-white/70 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm flex flex-col overflow-hidden">
-          {/* 1. Article Rich Toolbar (Exact to Image 1 when in Article mode) */}
-          {materialType === "article" && (
-            <div className="border-b border-slate-200/80 bg-white/90 px-4 py-2.5 flex items-center flex-wrap gap-1 text-slate-600 text-xs shadow-xs">
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100 text-slate-400"
-                title="Undo"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100 text-slate-400"
-                title="Redo"
-              >
-                <RotateCw className="w-3.5 h-3.5" />
-              </button>
-
-              <div className="h-4 w-px bg-slate-200 mx-1" />
-
-              {/* Heading selector */}
-              <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-cyan-500 text-white font-bold text-xs">
-                <span>T H3</span>
-                <ChevronDown className="w-3 h-3" />
-              </div>
-
-              <div className="h-4 w-px bg-slate-200 mx-1" />
-
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100 font-bold"
-                title="Bold"
-              >
-                <Bold className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100 italic"
-                title="Italic"
-              >
-                <Italic className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100 underline"
-                title="Underline"
-              >
-                <Underline className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100 line-through"
-                title="Strikethrough"
-              >
-                <Strikethrough className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Code inline"
-              >
-                <Code className="w-3.5 h-3.5" />
-              </button>
-
-              <div className="h-4 w-px bg-slate-200 mx-1" />
-
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Highlight"
-              >
-                <Highlighter className="w-3.5 h-3.5 text-amber-500" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Insert link"
-              >
-                <Link2 className="w-3.5 h-3.5" />
-              </button>
-
-              <div className="h-4 w-px bg-slate-200 mx-1" />
-
-              {/* Alignments */}
-              <button
-                type="button"
-                className="p-1.5 rounded bg-cyan-100 text-cyan-800 font-bold"
-                title="Align Left"
-              >
-                <AlignLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Align Center"
-              >
-                <AlignCenter className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Align Right"
-              >
-                <AlignRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Justify"
-              >
-                <AlignJustify className="w-3.5 h-3.5" />
-              </button>
-
-              <div className="h-4 w-px bg-slate-200 mx-1" />
-
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Bullet List"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Numbered List"
-              >
-                <ListOrdered className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-slate-100"
-                title="Quote"
-              >
-                <Quote className="w-3.5 h-3.5" />
-              </button>
-
-              <div className="ml-auto flex items-center gap-1">
-                <button
-                  type="button"
-                  className="p-1.5 rounded hover:bg-slate-100 text-slate-500"
-                  title="Fullscreen"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 2. Editor Header & Metadata (Matching Images 1, 2, 3) */}
+          {/* 1. Editor Header & Metadata (Matching Images 1, 2, 3) */}
           <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between">
             {/* Left badge */}
             <div>
@@ -794,19 +647,17 @@ export function MaterialStudioClient({
           {/* 4. Type-Specific Editor Body */}
           <div className="p-6 pt-2 flex-1 flex flex-col">
             {/* ---------------------------------------------------- */}
-            {/* A. ARTIKEL TEKS (Image 1) */}
+            {/* A. ARTIKEL TEKS (Image 1 with TipTap WYSIWYG Editor) */}
             {/* ---------------------------------------------------- */}
             {materialType === "article" && (
-              <div className="flex-1 flex flex-col relative min-h-[400px]">
-                <textarea
-                  value={contentBody}
-                  onChange={(e) => {
-                    setContentBody(e.target.value);
+              <div className="flex-1 flex flex-col relative min-h-[420px]">
+                <TipTapWysiwygEditor
+                  content={contentBody}
+                  onChange={(val) => {
+                    setContentBody(val);
                     setIsSaved(false);
                   }}
                   placeholder="Tuliskan modul bacaan di sini..."
-                  rows={16}
-                  className="w-full flex-1 p-4 rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-sm text-sm text-slate-800 leading-relaxed focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 font-normal resize-y"
                 />
 
                 {/* Article Statistics Floating Pill (Exact to Image 1) */}
