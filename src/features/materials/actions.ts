@@ -244,6 +244,7 @@ export interface CurriculumMaterialItem {
   sectionName: string;
   contentBody: string | null;
   externalUrl: string | null;
+  fileObjectKey?: string | null;
   sortOrder: number;
   durationMinutes: number;
   createdAt: Date;
@@ -304,6 +305,7 @@ export async function getClassCurriculum(classId: string) {
       sectionName: section,
       contentBody: m.contentBody,
       externalUrl: m.externalUrl,
+      fileObjectKey: m.fileObjectKey,
       sortOrder: m.sortOrder,
       durationMinutes: m.durationMinutes,
       createdAt: m.createdAt,
@@ -522,6 +524,7 @@ export async function getStudentCurriculumWithProgress(classId: string) {
       sectionName: section,
       contentBody: m.contentBody,
       externalUrl: m.externalUrl,
+      fileObjectKey: m.fileObjectKey,
       sortOrder: m.sortOrder,
       durationMinutes: m.durationMinutes,
       createdAt: m.createdAt,

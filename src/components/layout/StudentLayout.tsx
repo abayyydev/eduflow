@@ -39,6 +39,15 @@ const navItems = [
 export const StudentLayout: React.FC<StudentLayoutProps> = ({ user, children }) => {
   const pathname = usePathname();
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    }
+    window.location.href = "/login";
+  };
+
   return (
     <div className="min-h-screen flex bg-slate-50/60">
       {/* ========================================================================= */}
@@ -113,15 +122,14 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ user, children }) 
               </div>
             </div>
 
-            <form action="/api/auth/logout" method="POST">
-              <button
-                type="submit"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                title="Keluar"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+              title="Keluar"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -151,6 +159,14 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ user, children }) 
             <div className="h-7 w-7 rounded-full bg-cyan-600 text-white font-bold flex items-center justify-center text-xs">
               {user.name.charAt(0)}
             </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Keluar"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </header>
 

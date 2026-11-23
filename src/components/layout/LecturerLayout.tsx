@@ -48,6 +48,15 @@ export const LecturerLayout: React.FC<LecturerLayoutProps> = ({ user, children }
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    }
+    window.location.href = "/login";
+  };
+
   return (
     <div className="min-h-screen bg-[#F6F8FC] flex">
       {/* Mobile Backdrop */}
@@ -143,15 +152,14 @@ export const LecturerLayout: React.FC<LecturerLayoutProps> = ({ user, children }
               )}
             </div>
 
-            <form action="/api/auth/logout" method="POST">
-              <button
-                type="submit"
-                className="p-1.5 rounded-md text-[#667085] hover:text-[#C43D4B] hover:bg-white transition-colors"
-                title="Keluar"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 rounded-md text-[#667085] hover:text-[#C43D4B] hover:bg-white transition-colors"
+              title="Keluar"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>

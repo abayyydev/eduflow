@@ -18,6 +18,7 @@ import {
   PanelLeftOpen,
   Clock,
   Sparkles,
+  Download,
 } from "lucide-react";
 import {
   toggleStudentMaterialProgress,
@@ -230,7 +231,7 @@ export function StudentMaterialViewerClient({
                                 <button
                                   key={mat.id}
                                   onClick={() => setActiveMaterial(mat)}
-                                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-xs transition ${
+                                  className={`w-full group flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-xs transition ${
                                     isCurrent
                                       ? "bg-cyan-50/90 border border-cyan-200 text-cyan-900 font-semibold shadow-xs"
                                       : "text-slate-600 hover:bg-slate-100/80 font-medium"
@@ -247,8 +248,17 @@ export function StudentMaterialViewerClient({
                                     <span className="truncate">{mat.title}</span>
                                   </div>
 
-                                  {/* Status indicator (Completed Checkmark or Active Dot) */}
-                                  <div className="shrink-0 flex items-center">
+                                  {/* Status indicator & quick download */}
+                                  <div className="shrink-0 flex items-center gap-1.5">
+                                    <a
+                                      href={`/api/files/material/${mat.id}`}
+                                      download
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-1 rounded text-slate-400 hover:text-cyan-700 hover:bg-cyan-100 transition opacity-0 group-hover:opacity-100"
+                                      title="Unduh Materi Ini"
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                    </a>
                                     {mat.isCompleted ? (
                                       <CheckCircle2 className="w-4 h-4 text-teal-600 stroke-[2.5]" />
                                     ) : isCurrent ? (
@@ -312,7 +322,18 @@ export function StudentMaterialViewerClient({
                 </div>
 
                 {/* Right Action Buttons */}
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  {/* Download File Button */}
+                  <a
+                    href={`/api/files/material/${activeMaterial.id}`}
+                    download
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-200 bg-cyan-50/90 hover:bg-cyan-100 text-cyan-800 text-xs font-bold shadow-xs transition"
+                    title="Unduh file materi untuk dibaca offline"
+                  >
+                    <Download className="w-3.5 h-3.5 text-cyan-700" />
+                    <span>Unduh File</span>
+                  </a>
+
                   <button
                     onClick={() => setIsWideScreen(!isWideScreen)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-white text-slate-700 text-xs font-semibold shadow-xs transition"
@@ -364,6 +385,36 @@ export function StudentMaterialViewerClient({
                     <span>~{activeMaterial.durationMinutes || 2} menit pembelajaran</span>
                   </span>
                 </div>
+              </div>
+
+              {/* Download Banner / Attachment Box */}
+              <div className="mx-6 my-2 p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">
+                      File Materi: {activeMaterial.title}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {activeMaterial.materialType === "pdf"
+                        ? "Dokumen Lampiran / Slide Perkuliahan (PDF)"
+                        : activeMaterial.materialType === "video"
+                        ? "Materi Video & Referensi Pembelajaran"
+                        : "Modul Pembelajaran Lengkap (Dapat diunduh dan dibaca offline)"}
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={`/api/files/material/${activeMaterial.id}`}
+                  download
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-xs transition shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh File</span>
+                </a>
               </div>
 
               {/* Main Content Area */}
