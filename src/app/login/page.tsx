@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { GraduationCap, ShieldCheck } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,17 +40,6 @@ export default function LoginPage() {
       setError("Koneksi gagal. Pastikan server aktif.");
       setIsLoading(false);
     }
-  };
-
-  const fillCredentials = (type: "lecturer" | "student") => {
-    if (type === "lecturer") {
-      setIdentifier("dosen@eduflow.test");
-      setPassword("password123");
-    } else {
-      setIdentifier("2611090062"); // Abdulaziz Gaafar Abdullah (NIM Mahasiswa)
-      setPassword("password123");
-    }
-    setError(null);
   };
 
   return (
@@ -114,30 +103,6 @@ export default function LoginPage() {
               Masuk
             </Button>
           </form>
-
-          {/* Quick Demo Fill Buttons */}
-          <div className="mt-6 pt-5 border-t border-[#E4E9F2] space-y-2.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-[#667085]">
-              <ShieldCheck className="w-4 h-4 text-[#2457D6]" />
-              <span>Akses Cepat Akun Demo:</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => fillCredentials("lecturer")}
-                className="px-3 py-2 text-xs font-medium text-[#2457D6] bg-[#EEF3FF] hover:bg-[#DCE7FD] rounded-lg transition-colors text-center border border-[#2457D6]/20"
-              >
-                Demo Dosen (Email)
-              </button>
-              <button
-                type="button"
-                onClick={() => fillCredentials("student")}
-                className="px-3 py-2 text-xs font-medium text-[#16845B] bg-[#E8F5EF] hover:bg-[#D2EEDF] rounded-lg transition-colors text-center border border-[#16845B]/20"
-              >
-                Demo Mahasiswa (NIM)
-              </button>
-            </div>
-          </div>
         </Card>
 
         {/* Footer */}

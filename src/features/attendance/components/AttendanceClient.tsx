@@ -501,7 +501,7 @@ export function AttendanceClient({
                             handleStatusChange(
                               sess.id,
                               st.studentUserId,
-                              e.target.value as any
+                              e.target.value as "unrecorded" | "present" | "late" | "sick" | "excused" | "absent"
                             )
                           }
                           className={`text-[11px] font-bold rounded py-0.5 px-1 focus:outline-none cursor-pointer border ${

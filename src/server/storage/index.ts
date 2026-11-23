@@ -3,7 +3,8 @@ import path from "path";
 import { randomUUID } from "crypto";
 
 const LOCAL_STORAGE_DIR =
-  process.env.STORAGE_LOCAL_DIR || "./storage/submissions";
+  process.env.STORAGE_LOCAL_DIR ||
+  (process.env.VERCEL ? "/tmp/submissions" : "./storage/submissions");
 
 /**
  * Ensures the private storage directory exists.

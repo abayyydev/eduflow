@@ -17,8 +17,8 @@ export default async function StudentClassAssignmentsPage({
   let data;
   try {
     data = await getStudentClassAssignments(id);
-  } catch (error: any) {
-    const msg = error?.message || "";
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN_NOT_STUDENT") {
       redirect("/login");
     }
