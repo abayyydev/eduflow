@@ -40,11 +40,11 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ user, children }) 
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/60">
+    <div className="min-h-screen flex bg-slate-50/60">
       {/* ========================================================================= */}
       {/* 1. DESKTOP SIDEBAR (md:flex) */}
       {/* ========================================================================= */}
-      <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 z-40 bg-white/80 backdrop-blur-xl border-r border-white/80 shadow-sm p-4 justify-between">
+      <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 z-40 bg-white border-r border-slate-200/80 shadow-xs p-4 justify-between">
         <div className="space-y-6">
           {/* Brand Logo */}
           <Link href="/student/dashboard" className="flex items-center gap-3 px-2 py-1">
@@ -127,37 +127,38 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ user, children }) 
       </aside>
 
       {/* ========================================================================= */}
-      {/* 2. MOBILE TOP BAR (md:hidden) */}
+      {/* 2. WRAPPER FOR MAIN AREA (Offset with md:pl-64 to prevent sidebar overlap) */}
       {/* ========================================================================= */}
-      <header className="sticky top-0 z-30 md:hidden bg-white/80 backdrop-blur-md border-b border-white/80 px-4 py-3 flex items-center justify-between shadow-xs">
-        <Link href="/student/dashboard" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-            E
-          </div>
-          <span className="font-extrabold text-sm text-slate-900 tracking-tight">EDUFlow</span>
-        </Link>
-
-        <div className="flex items-center gap-2">
-          <ThemeSwitcher />
-          <Link
-            href="/student/notifications"
-            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 relative transition-colors"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-cyan-500" />
+      <div className="flex-1 flex flex-col min-h-screen md:pl-64 w-full min-w-0">
+        {/* MOBILE TOP BAR (md:hidden) */}
+        <header className="sticky top-0 z-30 md:hidden bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center justify-between shadow-xs">
+          <Link href="/student/dashboard" className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+              E
+            </div>
+            <span className="font-extrabold text-sm text-slate-900 tracking-tight">EDUFlow</span>
           </Link>
-          <div className="h-7 w-7 rounded-full bg-cyan-600 text-white font-bold flex items-center justify-center text-xs">
-            {user.name.charAt(0)}
-          </div>
-        </div>
-      </header>
 
-      {/* ========================================================================= */}
-      {/* 3. MAIN CONTENT (with desktop left margin & mobile bottom padding) */}
-      {/* ========================================================================= */}
-      <main className="flex-1 md:pl-64 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-[1600px] w-full">
-        {children}
-      </main>
+          <div className="flex items-center gap-2">
+            <ThemeSwitcher />
+            <Link
+              href="/student/notifications"
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 relative transition-colors"
+            >
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-cyan-500" />
+            </Link>
+            <div className="h-7 w-7 rounded-full bg-cyan-600 text-white font-bold flex items-center justify-center text-xs">
+              {user.name.charAt(0)}
+            </div>
+          </div>
+        </header>
+
+        {/* MAIN CONTENT */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-[1600px] w-full mx-auto">
+          {children}
+        </main>
+      </div>
 
       {/* ========================================================================= */}
       {/* 4. MOBILE BOTTOM NAVIGATION (md:hidden) */}

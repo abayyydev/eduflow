@@ -72,27 +72,42 @@ body {
 }
 
 [data-theme="glassmorphism"] header,
-[data-theme="glassmorphism"] aside {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
+[data-theme="glassmorphism"] aside,
+[data-theme="glassmorphism"] [role="dialog"],
+[data-theme="glassmorphism"] .glass-nav {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   border-color: rgba(255, 255, 255, 0.75) !important;
   box-shadow: 0 4px 20px 0 rgba(31, 38, 135, 0.05) !important;
-  transform: translateZ(0);
 }
 
-[data-theme="glassmorphism"] .bg-white {
-  background: rgba(255, 255, 255, 0.82) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-  border-color: rgba(255, 255, 255, 0.7) !important;
-  box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.04) !important;
+[data-theme="glassmorphism"] .bg-white:not(td):not(th):not(input):not(select):not(button) {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 2px 12px 0 rgba(31, 38, 135, 0.03) !important;
+}
+
+/* Optimization: Exclude tables and form controls from GPU heavy backdrop filters */
+[data-theme="glassmorphism"] table,
+[data-theme="glassmorphism"] td,
+[data-theme="glassmorphism"] th,
+[data-theme="glassmorphism"] tr {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="glassmorphism"] td.bg-white,
+[data-theme="glassmorphism"] th.bg-white {
+  background: #FFFFFF !important;
 }
 
 [data-theme="glassmorphism"] input,
 [data-theme="glassmorphism"] select {
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
   border-color: rgba(226, 232, 240, 0.9) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* 3. NEUMORPHISM -> Komponen timbul seperti 3D */
