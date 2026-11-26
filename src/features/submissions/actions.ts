@@ -16,6 +16,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { savePrivateFile } from "@/server/storage";
+import { isPastDeadline } from "@/lib/utils";
 
 export async function getStudentAssignmentDetail(assignmentId: string) {
   const student = await requireStudent();
@@ -173,10 +174,8 @@ export async function submitStudentAssignment(formData: FormData) {
 
   const { assignment, submission } = data;
   const now = new Date();
-  const dueDate = assignment.dueAt ? new Date(assignment.dueAt) : null;
-
   // Deadline check
-  const isLate = dueDate ? now.getTime() > dueDate.getTime() : false;
+  const isLate = isPastDeadline(assignment.dueAt);
 
   if (!isDraft && isLate && !assignment.allowLate) {
     return { error: "Tenggat waktu pengumpulan telah berakhir dan keterlambatan tidak diizinkan." };

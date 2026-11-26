@@ -35,6 +35,17 @@ const assignmentSchema = z.object({
   createGradeItem: z.boolean().default(true),
 });
 
+const updateAssignmentSchema = z.object({
+  title: z.string().min(3, "Judul tugas minimal 3 karakter").max(180),
+  instructions: z.string().min(5, "Instruksi tugas minimal 5 karakter"),
+  maxScore: z.coerce.number().min(1).max(1000).default(100),
+  dueAt: z.string().min(1, "Tenggat waktu wajib ditentukan"),
+  allowLate: z.boolean().default(false),
+  submissionMode: z.enum(["file", "url", "both"]).default("both"),
+  maxFileSizeMb: z.coerce.number().min(1).max(50).default(10),
+  status: z.enum(["draft", "published", "closed"]).default("published"),
+});
+
 export async function getLecturerAssignments(classIdFilter?: string) {
   const lecturer = await requireLecturer();
 
@@ -49,11 +60,13 @@ export async function getLecturerAssignments(classIdFilter?: string) {
     .select({
       id: assignments.id,
       title: assignments.title,
+      instructions: assignments.instructions,
       maxScore: assignments.maxScore,
       opensAt: assignments.opensAt,
       dueAt: assignments.dueAt,
       allowLate: assignments.allowLate,
       submissionMode: assignments.submissionMode,
+      maxFileSizeMb: assignments.maxFileSizeMb,
       status: assignments.status,
       classId: classes.id,
       classDisplayName: classes.displayName,
@@ -299,6 +312,10 @@ export async function createAssignment(formData: FormData) {
 
   const newAssignmentId = randomUUID();
 
+  const parsedDueAt = new Date(
+    dueAt.includes("Z") ? dueAt : (dueAt.length === 16 ? dueAt + ":00Z" : dueAt + "Z")
+  );
+
   await db.insert(assignments).values({
     id: newAssignmentId,
     classId,
@@ -306,7 +323,7 @@ export async function createAssignment(formData: FormData) {
     instructions: instructions.trim(),
     maxScore: maxScore.toFixed(2),
     opensAt: opensAt ? new Date(opensAt) : new Date(),
-    dueAt: new Date(dueAt),
+    dueAt: parsedDueAt,
     allowLate,
     submissionMode,
     maxFileSizeMb,
@@ -327,6 +344,136 @@ export async function createAssignment(formData: FormData) {
   revalidatePath("/assignments");
   revalidatePath(`/classes/${classId}`);
   return { success: true, assignmentId: newAssignmentId };
+}
+
+export async function updateAssignment(assignmentId: string, formData: FormData) {
+  const lecturer = await requireLecturer();
+
+  const validated = updateAssignmentSchema.safeParse({
+    title: formData.get("title"),
+    instructions: formData.get("instructions"),
+    maxScore: formData.get("maxScore"),
+    dueAt: formData.get("dueAt"),
+    allowLate: formData.get("allowLate") === "true",
+    submissionMode: formData.get("submissionMode") || "both",
+    maxFileSizeMb: formData.get("maxFileSizeMb") || 10,
+    status: formData.get("status") || "published",
+  });
+
+  if (!validated.success) {
+    return {
+      error: "Validasi gagal: " + Object.values(validated.error.flatten().fieldErrors).flat().join(", "),
+    };
+  }
+
+  // Check ownership
+  const [existing] = await db
+    .select({
+      id: assignments.id,
+      title: assignments.title,
+      classId: assignments.classId,
+      assessmentItemId: assignments.assessmentItemId,
+      ownerUserId: courses.lecturerId,
+    })
+    .from(assignments)
+    .innerJoin(classes, eq(assignments.classId, classes.id))
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(assignments.id, assignmentId))
+    .limit(1);
+
+  if (!existing || existing.ownerUserId !== lecturer.userId) {
+    return { error: "Tugas tidak ditemukan atau bukan milik Anda" };
+  }
+
+  const { title, instructions, maxScore, dueAt, allowLate, submissionMode, maxFileSizeMb, status } = validated.data;
+
+  const parsedDueAt = new Date(
+    dueAt.includes("Z") ? dueAt : (dueAt.length === 16 ? dueAt + ":00Z" : dueAt + "Z")
+  );
+
+  await db
+    .update(assignments)
+    .set({
+      title: title.trim(),
+      instructions: instructions.trim(),
+      maxScore: maxScore.toFixed(2),
+      dueAt: parsedDueAt,
+      allowLate,
+      submissionMode,
+      maxFileSizeMb,
+      status,
+      updatedAt: new Date(),
+    })
+    .where(eq(assignments.id, assignmentId));
+
+  if (existing.assessmentItemId) {
+    await db
+      .update(assessmentItems)
+      .set({
+        title: title.trim(),
+        maxScore: maxScore.toFixed(2),
+      })
+      .where(eq(assessmentItems.id, existing.assessmentItemId));
+  }
+
+  await db.insert(auditLogs).values({
+    id: randomUUID(),
+    actorUserId: lecturer.userId,
+    entityType: "assignments",
+    entityId: assignmentId,
+    action: "update_assignment",
+    afterData: { title, maxScore, dueAt, submissionMode, status },
+  });
+
+  revalidatePath("/assignments");
+  revalidatePath(`/assignments/${assignmentId}`);
+  revalidatePath(`/classes/${existing.classId}`);
+
+  return { success: true };
+}
+
+export async function deleteAssignment(assignmentId: string) {
+  const lecturer = await requireLecturer();
+
+  const [existing] = await db
+    .select({
+      id: assignments.id,
+      title: assignments.title,
+      classId: assignments.classId,
+      assessmentItemId: assignments.assessmentItemId,
+      ownerUserId: courses.lecturerId,
+    })
+    .from(assignments)
+    .innerJoin(classes, eq(assignments.classId, classes.id))
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(assignments.id, assignmentId))
+    .limit(1);
+
+  if (!existing || existing.ownerUserId !== lecturer.userId) {
+    return { error: "Tugas tidak ditemukan atau bukan milik Anda" };
+  }
+
+  // Delete assignment (cascades to submissions and submissionVersions)
+  await db.delete(assignments).where(eq(assignments.id, assignmentId));
+
+  // If there was an associated assessmentItem, delete it as well
+  if (existing.assessmentItemId) {
+    await db.delete(assessmentItems).where(eq(assessmentItems.id, existing.assessmentItemId));
+  }
+
+  await db.insert(auditLogs).values({
+    id: randomUUID(),
+    actorUserId: lecturer.userId,
+    entityType: "assignments",
+    entityId: assignmentId,
+    action: "delete_assignment",
+    beforeData: { title: existing.title, classId: existing.classId },
+  });
+
+  revalidatePath("/assignments");
+  revalidatePath(`/classes/${existing.classId}`);
+
+  return { success: true };
 }
 
 export async function gradeSubmission(

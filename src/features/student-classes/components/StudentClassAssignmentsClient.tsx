@@ -19,7 +19,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, isPastDeadline, isDeadlineApproaching } from "@/lib/utils";
 
 export interface StudentClassAssignmentItem {
   id: string;
@@ -266,13 +266,8 @@ export function StudentClassAssignmentsClient({
       ) : (
         <div className="space-y-3">
           {paginatedAssignments.map((a) => {
-            const isDueSoon =
-              a.dueAt &&
-              new Date(a.dueAt).getTime() - new Date().getTime() <
-                3 * 24 * 60 * 60 * 1000 &&
-              new Date(a.dueAt).getTime() > new Date().getTime();
-            const isOverdue =
-              a.dueAt && new Date(a.dueAt).getTime() < new Date().getTime();
+            const isDueSoon = isDeadlineApproaching(a.dueAt);
+            const isOverdue = isPastDeadline(a.dueAt);
 
             return (
               <div

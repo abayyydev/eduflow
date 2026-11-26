@@ -3,26 +3,31 @@ import { db } from "../src/server/db";
 import { assignments, submissions, students } from "../src/server/db/schema";
 import { eq } from "drizzle-orm";
 import { savePrivateFile, readPrivateFile } from "../src/server/storage";
+import { formatDateTime, toDateTimeLocalString, isPastDeadline, parseDateSafe } from "../src/lib/utils";
 
 describe("Assignment & Submission Lifecycle Tests", () => {
   let demoAssignment: any;
   let demoStudent: any;
 
   beforeAll(async () => {
-    // 1. Fetch demo assignment from seed
-    const [asg] = await db
-      .select()
-      .from(assignments)
-      .limit(1);
-    demoAssignment = asg;
+    try {
+      // 1. Fetch demo assignment from seed
+      const [asg] = await db
+        .select()
+        .from(assignments)
+        .limit(1);
+      demoAssignment = asg;
 
-    // 2. Fetch demo student mhs1 from students table
-    const [student] = await db
-      .select()
-      .from(students)
-      .where(eq(students.email, "mhs1@eduflow.test"))
-      .limit(1);
-    demoStudent = student;
+      // 2. Fetch demo student mhs1 from students table
+      const [student] = await db
+        .select()
+        .from(students)
+        .where(eq(students.email, "mhs1@eduflow.test"))
+        .limit(1);
+      demoStudent = student;
+    } catch {
+      // Database not reachable in offline/CI environment
+    }
   });
 
   it("verifies assignment properties from seed", () => {
@@ -92,5 +97,22 @@ describe("Assignment & Submission Lifecycle Tests", () => {
 
     const isFutureLate = now.getTime() > dueFuture.getTime();
     expect(isFutureLate).toBe(false);
+  });
+
+  it("verifies timezone literal consistency (formatDateTime and toDateTimeLocalString)", () => {
+    // Exact user case: input 16:00 must format as 16.00, not 23.00
+    const dbIso = "2026-11-26T16:00:00.000Z";
+    const formattedIso = formatDateTime(dbIso);
+    expect(formattedIso).toContain("16.00");
+
+    const mysqlStr = "2026-11-26 16:00:00";
+    const formattedMysql = formatDateTime(mysqlStr);
+    expect(formattedMysql).toContain("16.00");
+
+    const localInputStr = toDateTimeLocalString(dbIso);
+    expect(localInputStr).toBe("2026-11-26T16:00");
+
+    const parsed = parseDateSafe("2026-11-26 16:00:00");
+    expect(parsed?.getUTCHours()).toBe(16);
   });
 });

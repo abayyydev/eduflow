@@ -18,7 +18,7 @@ import {
   Send,
   Save,
 } from "lucide-react";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, isPastDeadline } from "@/lib/utils";
 import { submitStudentAssignment } from "../actions";
 
 export interface StudentAssignmentDetailData {
@@ -96,9 +96,7 @@ export function StudentSubmissionClient({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const now = new Date();
-  const dueDate = assignment.dueAt ? new Date(assignment.dueAt) : null;
-  const isLate = dueDate ? now.getTime() > dueDate.getTime() : false;
+  const isLate = isPastDeadline(assignment.dueAt);
   const isClosed = assignment.status === "closed" || (isLate && !assignment.allowLate);
 
   const handleSubmit = async (action: "draft" | "submit") => {

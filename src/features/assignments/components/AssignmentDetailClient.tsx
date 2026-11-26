@@ -18,9 +18,12 @@ import {
   Search,
   Check,
   RotateCcw,
+  Pencil,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
-import { formatDateTime } from "@/lib/utils";
-import { gradeSubmission } from "../actions";
+import { formatDateTime, toDateTimeLocalString } from "@/lib/utils";
+import { gradeSubmission, updateAssignment, deleteAssignment } from "../actions";
 
 export interface AssignmentDetailData {
   id: string;
@@ -31,6 +34,7 @@ export interface AssignmentDetailData {
   dueAt: Date | null;
   allowLate: boolean;
   submissionMode: "file" | "url" | "both";
+  maxFileSizeMb?: number | null;
   status: "draft" | "published" | "closed";
   classId: string;
   classDisplayName: string;
@@ -90,6 +94,15 @@ export function AssignmentDetailClient({
   const [feedbackInput, setFeedbackInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Edit & Delete modal states
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const maxScore = parseFloat(assignment.maxScore);
 
@@ -162,6 +175,42 @@ export function AssignmentDetailClient({
     router.refresh();
   };
 
+  const handleUpdateAssignment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setEditError(null);
+    setEditLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const res = await updateAssignment(assignment.id, formData);
+
+    if (res.error) {
+      setEditError(res.error);
+      setEditLoading(false);
+      return;
+    }
+
+    setEditLoading(false);
+    setIsEditOpen(false);
+    router.refresh();
+  };
+
+  const handleDeleteAssignment = async () => {
+    setDeleteError(null);
+    setDeleteLoading(true);
+
+    const res = await deleteAssignment(assignment.id);
+
+    if (res.error) {
+      setDeleteError(res.error);
+      setDeleteLoading(false);
+      return;
+    }
+
+    setDeleteLoading(false);
+    setIsDeleteOpen(false);
+    router.push("/assignments");
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Navigation */}
@@ -206,6 +255,30 @@ export function AssignmentDetailClient({
                   Keterlambatan: {assignment.allowLate ? "Diizinkan" : "Tidak diizinkan"}
                 </span>
               </p>
+            </div>
+
+            <div className="flex items-center gap-2 self-start lg:self-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditError(null);
+                  setIsEditOpen(true);
+                }}
+              >
+                <Pencil className="w-4 h-4 mr-1.5" /> Edit Tugas
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[#C43D4B] hover:text-[#C43D4B] hover:bg-[#FCECEE]"
+                onClick={() => {
+                  setDeleteError(null);
+                  setIsDeleteOpen(true);
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" /> Hapus
+              </Button>
             </div>
           </div>
 
@@ -512,6 +585,194 @@ export function AssignmentDetailClient({
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Modal Edit Tugas */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        title="Edit Tugas"
+        description="Perbarui informasi instruksi, batas waktu deadline, atau pengaturan tugas."
+        maxWidth="lg"
+      >
+        <form onSubmit={handleUpdateAssignment} className="space-y-3.5">
+          {editError && (
+            <div className="p-2.5 rounded-lg bg-[#FCECEE] border border-[#C43D4B]/20 text-xs text-[#C43D4B]">
+              {editError}
+            </div>
+          )}
+
+          <div className="p-2.5 rounded-lg bg-[#F4F7FE] border border-[#2457D6]/20 text-xs text-[#2457D6]">
+            Kelas: <strong>{assignment.classDisplayName}</strong> ({assignment.courseCode})
+          </div>
+
+          <Input
+            label="Judul Tugas"
+            name="title"
+            defaultValue={assignment.title}
+            required
+            disabled={editLoading}
+          />
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-[#172033]">
+              Instruksi / Deskripsi Pengerjaan
+            </label>
+            <textarea
+              name="instructions"
+              rows={4}
+              defaultValue={assignment.instructions}
+              required
+              className="w-full rounded-lg border border-[#E4E9F2] bg-white p-3 text-sm text-[#172033] focus:outline-none focus:border-[#2457D6]"
+              disabled={editLoading}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Tenggat Waktu (Deadline)"
+              name="dueAt"
+              type="datetime-local"
+              defaultValue={toDateTimeLocalString(assignment.dueAt)}
+              required
+              disabled={editLoading}
+            />
+            <Input
+              label="Skor Maksimum"
+              name="maxScore"
+              type="number"
+              defaultValue={assignment.maxScore}
+              min={1}
+              max={1000}
+              required
+              disabled={editLoading}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-[#172033]">
+                Metode Pengumpulan
+              </label>
+              <select
+                name="submissionMode"
+                defaultValue={assignment.submissionMode}
+                className="w-full rounded-lg border border-[#E4E9F2] bg-white px-3.5 py-2 text-sm text-[#172033] focus:outline-none focus:border-[#2457D6]"
+                disabled={editLoading}
+              >
+                <option value="both">Unggah File &amp; Tautan URL</option>
+                <option value="file">Hanya Unggah File</option>
+                <option value="url">Hanya Tautan URL</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-[#172033]">
+                Status Tugas
+              </label>
+              <select
+                name="status"
+                defaultValue={assignment.status}
+                className="w-full rounded-lg border border-[#E4E9F2] bg-white px-3.5 py-2 text-sm text-[#172033] focus:outline-none focus:border-[#2457D6]"
+                disabled={editLoading}
+              >
+                <option value="published">Dipublikasikan</option>
+                <option value="draft">Draft</option>
+                <option value="closed">Ditutup</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Batas Maksimum File (MB)"
+              name="maxFileSizeMb"
+              type="number"
+              defaultValue={assignment.maxFileSizeMb || 10}
+              min={1}
+              max={50}
+              disabled={editLoading}
+            />
+
+            <div className="flex items-center pt-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="allowLate"
+                  value="true"
+                  defaultChecked={assignment.allowLate}
+                  className="h-4 w-4 rounded border-gray-300 text-[#2457D6] focus:ring-[#2457D6]"
+                />
+                <span className="text-xs font-medium text-[#172033]">
+                  Izinkan pengumpulan terlambat
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#E4E9F2]">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditOpen(false)}
+              disabled={editLoading}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" size="sm" isLoading={editLoading}>
+              Simpan Perubahan
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Hapus Tugas */}
+      <Modal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        title="Hapus Tugas"
+        description="Apakah Anda yakin ingin menghapus tugas ini? Tindakan ini tidak dapat dibatalkan."
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          {deleteError && (
+            <div className="p-2.5 rounded-lg bg-[#FCECEE] border border-[#C43D4B]/20 text-xs text-[#C43D4B]">
+              {deleteError}
+            </div>
+          )}
+
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-[#FCECEE]/50 border border-[#C43D4B]/20 text-xs text-[#172033]">
+            <AlertTriangle className="w-5 h-5 text-[#C43D4B] shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-[#C43D4B]">Peringatan Penghapusan</p>
+              <p className="mt-1 text-[#667085]">
+                Menghapus tugas <strong>&quot;{assignment.title}&quot;</strong> akan menghapus seluruh data pengumpulan (submisi mahasiswa), riwayat file versi tugas, dan item nilai terkait di Gradebook.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={deleteLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteAssignment}
+              isLoading={deleteLoading}
+            >
+              Hapus Tugas
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

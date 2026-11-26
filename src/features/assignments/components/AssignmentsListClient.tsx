@@ -16,18 +16,23 @@ import {
   Search,
   ArrowRight,
   Filter,
+  Pencil,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
-import { formatDateTime } from "@/lib/utils";
-import { createAssignment } from "../actions";
+import { formatDateTime, toDateTimeLocalString } from "@/lib/utils";
+import { createAssignment, updateAssignment, deleteAssignment } from "../actions";
 
 export interface AssignmentListItem {
   id: string;
   title: string;
+  instructions?: string | null;
   maxScore: string;
   opensAt: Date | null;
   dueAt: Date | null;
   allowLate: boolean;
   submissionMode: "file" | "url" | "both";
+  maxFileSizeMb?: number | null;
   status: "draft" | "published" | "closed";
   classId: string;
   classDisplayName: string;
@@ -61,6 +66,15 @@ export function AssignmentsListClient({
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Edit & Delete modal states
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentListItem | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const [deletingAssignment, setDeletingAssignment] = useState<AssignmentListItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const filtered = assignmentsList.filter((a) => {
     const matchesClass =
       selectedClassId === "all" || a.classId === selectedClassId;
@@ -89,6 +103,44 @@ export function AssignmentsListClient({
 
     setIsLoading(false);
     setIsModalOpen(false);
+    window.location.reload();
+  };
+
+  const handleUpdateAssignment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingAssignment) return;
+    setEditError(null);
+    setEditLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const res = await updateAssignment(editingAssignment.id, formData);
+
+    if (res.error) {
+      setEditError(res.error);
+      setEditLoading(false);
+      return;
+    }
+
+    setEditLoading(false);
+    setEditingAssignment(null);
+    window.location.reload();
+  };
+
+  const handleDeleteAssignment = async () => {
+    if (!deletingAssignment) return;
+    setDeleteError(null);
+    setDeleteLoading(true);
+
+    const res = await deleteAssignment(deletingAssignment.id);
+
+    if (res.error) {
+      setDeleteError(res.error);
+      setDeleteLoading(false);
+      return;
+    }
+
+    setDeleteLoading(false);
+    setDeletingAssignment(null);
     window.location.reload();
   };
 
@@ -148,24 +200,26 @@ export function AssignmentsListClient({
           </div>
 
           {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="rounded-lg border border-[#E4E9F2] bg-white px-2.5 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
-          >
-            <option value="all">Semua Status</option>
-            <option value="published">Dipublikasikan</option>
-            <option value="draft">Draft</option>
-            <option value="closed">Ditutup</option>
-          </select>
+          <div className="flex items-center gap-1 text-xs text-[#667085]">
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="rounded-lg border border-[#E4E9F2] bg-white px-2.5 py-1.5 text-xs text-[#172033] focus:outline-none focus:border-[#2457D6]"
+            >
+              <option value="all">Semua Status</option>
+              <option value="published">Dipublikasikan</option>
+              <option value="draft">Draft</option>
+              <option value="closed">Ditutup</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Assignments List */}
+      {/* Assignment Grid */}
       {filtered.length === 0 ? (
-        <Card className="py-12 text-center">
-          <FileCheck2 className="mx-auto h-12 w-12 text-[#667085]/40 mb-3" />
-          <h3 className="text-base font-semibold text-[#172033]">
+        <Card className="text-center py-12">
+          <FileCheck2 className="w-12 h-12 text-[#667085] mx-auto mb-3 opacity-40" />
+          <h3 className="text-sm font-semibold text-[#172033]">
             Tidak ada tugas ditemukan
           </h3>
           <p className="text-xs text-[#667085] mt-1 max-w-sm mx-auto">
@@ -235,13 +289,40 @@ export function AssignmentsListClient({
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#E4E9F2]">
-                <Link href={`/assignments/${asg.id}`} className="block">
+              {/* Action buttons */}
+              <div className="mt-4 pt-3 border-t border-[#E4E9F2] flex items-center gap-2">
+                <Link href={`/assignments/${asg.id}`} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full justify-between">
                     <span>Lihat &amp; Nilai Submisi</span>
                     <ArrowRight className="w-4 h-4 text-[#2457D6]" />
                   </Button>
                 </Link>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="px-2.5 text-[#667085] hover:text-[#2457D6] hover:bg-[#EEF3FF]"
+                  title="Edit Tugas"
+                  onClick={() => {
+                    setEditingAssignment(asg);
+                    setEditError(null);
+                  }}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="px-2.5 text-[#667085] hover:text-[#C43D4B] hover:bg-[#FCECEE]"
+                  title="Hapus Tugas"
+                  onClick={() => {
+                    setDeletingAssignment(asg);
+                    setDeleteError(null);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </Card>
           ))}
@@ -395,6 +476,198 @@ export function AssignmentsListClient({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Edit Tugas */}
+      <Modal
+        isOpen={editingAssignment !== null}
+        onClose={() => setEditingAssignment(null)}
+        title="Edit Tugas"
+        description="Perbarui informasi instruksi, batas waktu deadline, atau pengaturan tugas."
+        maxWidth="lg"
+      >
+        {editingAssignment && (
+          <form onSubmit={handleUpdateAssignment} className="space-y-3.5">
+            {editError && (
+              <div className="p-2.5 rounded-lg bg-[#FCECEE] border border-[#C43D4B]/20 text-xs text-[#C43D4B]">
+                {editError}
+              </div>
+            )}
+
+            <div className="p-2.5 rounded-lg bg-[#F4F7FE] border border-[#2457D6]/20 text-xs text-[#2457D6]">
+              Mengedit tugas pada kelas: <strong>{editingAssignment.classDisplayName}</strong> ({editingAssignment.courseCode})
+            </div>
+
+            <Input
+              label="Judul Tugas"
+              name="title"
+              defaultValue={editingAssignment.title}
+              required
+              disabled={editLoading}
+            />
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-[#172033]">
+                Instruksi / Deskripsi Pengerjaan
+              </label>
+              <textarea
+                name="instructions"
+                rows={4}
+                defaultValue={editingAssignment.instructions || ""}
+                required
+                className="w-full rounded-lg border border-[#E4E9F2] bg-white p-3 text-sm text-[#172033] focus:outline-none focus:border-[#2457D6]"
+                disabled={editLoading}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Tenggat Waktu (Deadline)"
+                name="dueAt"
+                type="datetime-local"
+                defaultValue={toDateTimeLocalString(editingAssignment.dueAt)}
+                required
+                disabled={editLoading}
+              />
+              <Input
+                label="Skor Maksimum"
+                name="maxScore"
+                type="number"
+                defaultValue={editingAssignment.maxScore || "100"}
+                min={1}
+                max={1000}
+                required
+                disabled={editLoading}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-[#172033]">
+                  Metode Pengumpulan
+                </label>
+                <select
+                  name="submissionMode"
+                  defaultValue={editingAssignment.submissionMode}
+                  className="w-full rounded-lg border border-[#E4E9F2] bg-white px-3.5 py-2 text-sm text-[#172033] focus:outline-none focus:border-[#2457D6]"
+                  disabled={editLoading}
+                >
+                  <option value="both">Unggah File &amp; Tautan URL</option>
+                  <option value="file">Hanya Unggah File</option>
+                  <option value="url">Hanya Tautan URL</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-[#172033]">
+                  Status Tugas
+                </label>
+                <select
+                  name="status"
+                  defaultValue={editingAssignment.status}
+                  className="w-full rounded-lg border border-[#E4E9F2] bg-white px-3.5 py-2 text-sm text-[#172033] focus:outline-none focus:border-[#2457D6]"
+                  disabled={editLoading}
+                >
+                  <option value="published">Dipublikasikan</option>
+                  <option value="draft">Draft</option>
+                  <option value="closed">Ditutup</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Batas Maksimum File (MB)"
+                name="maxFileSizeMb"
+                type="number"
+                defaultValue={editingAssignment.maxFileSizeMb || 10}
+                min={1}
+                max={50}
+                disabled={editLoading}
+              />
+
+              <div className="flex items-center pt-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="allowLate"
+                    value="true"
+                    defaultChecked={editingAssignment.allowLate}
+                    className="h-4 w-4 rounded border-gray-300 text-[#2457D6] focus:ring-[#2457D6]"
+                  />
+                  <span className="text-xs font-medium text-[#172033]">
+                    Izinkan pengumpulan terlambat
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E4E9F2]">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingAssignment(null)}
+                disabled={editLoading}
+              >
+                Batal
+              </Button>
+              <Button type="submit" variant="primary" size="sm" isLoading={editLoading}>
+                Simpan Perubahan
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal Hapus Tugas */}
+      <Modal
+        isOpen={deletingAssignment !== null}
+        onClose={() => setDeletingAssignment(null)}
+        title="Hapus Tugas"
+        description="Apakah Anda yakin ingin menghapus tugas ini? Tindakan ini tidak dapat dibatalkan."
+        maxWidth="md"
+      >
+        {deletingAssignment && (
+          <div className="space-y-4">
+            {deleteError && (
+              <div className="p-2.5 rounded-lg bg-[#FCECEE] border border-[#C43D4B]/20 text-xs text-[#C43D4B]">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-[#FCECEE]/50 border border-[#C43D4B]/20 text-xs text-[#172033]">
+              <AlertTriangle className="w-5 h-5 text-[#C43D4B] shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-[#C43D4B]">Peringatan Penghapusan</p>
+                <p className="mt-1 text-[#667085]">
+                  Menghapus tugas <strong>&quot;{deletingAssignment.title}&quot;</strong> akan menghapus seluruh data pengumpulan (submisi mahasiswa), riwayat file versi tugas, dan item nilai terkait di Gradebook.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingAssignment(null)}
+                disabled={deleteLoading}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAssignment}
+                isLoading={deleteLoading}
+              >
+                Hapus Tugas
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
