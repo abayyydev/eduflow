@@ -13,6 +13,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { ThemeSettingsCard } from "@/components/theme/ThemeSettingsCard";
+import { CampusLocationSettingCard } from "@/features/attendance/components/CampusLocationSettingCard";
 
 export default async function SettingsPage() {
   const user = await requireLecturer();
@@ -27,6 +28,21 @@ export default async function SettingsPage() {
     .select({ count: sql<number>`count(*)` })
     .from(courses)
     .where(eq(courses.lecturerId, user.userId));
+
+  const [firstClass] = await db
+    .select({
+      campusLatitude: classes.campusLatitude,
+      campusLongitude: classes.campusLongitude,
+      campusRadiusMeters: classes.campusRadiusMeters,
+    })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(courses.lecturerId, user.userId))
+    .limit(1);
+
+  const initialLat = parseFloat(firstClass?.campusLatitude || "-6.914744");
+  const initialLon = parseFloat(firstClass?.campusLongitude || "107.60981");
+  const initialRadius = firstClass?.campusRadiusMeters || 300;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -122,6 +138,15 @@ export default async function SettingsPage() {
 
         {/* UI Themes Customizer */}
         <ThemeSettingsCard />
+
+        {/* Campus Location & Geofencing Settings */}
+        <div className="md:col-span-2">
+          <CampusLocationSettingCard
+            initialLatitude={initialLat}
+            initialLongitude={initialLon}
+            initialRadiusMeters={initialRadius}
+          />
+        </div>
 
         {/* System & Storage Environment */}
         <Card className="md:col-span-2">

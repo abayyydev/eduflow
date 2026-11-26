@@ -926,3 +926,159 @@ export async function getStudentAttendanceHubData() {
     recentRecords: records.slice(0, 15),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Campus Geofencing Location Management
+// ---------------------------------------------------------------------------
+
+export async function getCampusLocationAction(classId?: string) {
+  const lecturer = await requireLecturer();
+
+  if (classId) {
+    const [cls] = await db
+      .select({
+        id: classes.id,
+        displayName: classes.displayName,
+        campusLatitude: classes.campusLatitude,
+        campusLongitude: classes.campusLongitude,
+        campusRadiusMeters: classes.campusRadiusMeters,
+      })
+      .from(classes)
+      .innerJoin(courses, eq(classes.courseId, courses.id))
+      .where(and(eq(classes.id, classId), eq(courses.lecturerId, lecturer.userId)))
+      .limit(1);
+
+    if (cls) {
+      return {
+        latitude: parseFloat(cls.campusLatitude || "-6.914744"),
+        longitude: parseFloat(cls.campusLongitude || "107.60981"),
+        radiusMeters: cls.campusRadiusMeters || 300,
+        className: cls.displayName,
+      };
+    }
+  }
+
+  // Get default / current location from first class owned by lecturer
+  const [cls] = await db
+    .select({
+      campusLatitude: classes.campusLatitude,
+      campusLongitude: classes.campusLongitude,
+      campusRadiusMeters: classes.campusRadiusMeters,
+    })
+    .from(classes)
+    .innerJoin(courses, eq(classes.courseId, courses.id))
+    .where(eq(courses.lecturerId, lecturer.userId))
+    .limit(1);
+
+  return {
+    latitude: parseFloat(cls?.campusLatitude || "-6.914744"),
+    longitude: parseFloat(cls?.campusLongitude || "107.60981"),
+    radiusMeters: cls?.campusRadiusMeters || 300,
+    className: null,
+  };
+}
+
+export async function updateCampusLocationAction(params: {
+  classId?: string;
+  applyToAll?: boolean;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+}) {
+  const lecturer = await requireLecturer();
+
+  if (isNaN(params.latitude) || isNaN(params.longitude)) {
+    return { error: "Nilai Latitude dan Longitude harus berupa angka yang valid." };
+  }
+
+  if (params.latitude < -90 || params.latitude > 90) {
+    return { error: "Latitude harus berada di antara -90 dan 90 derajat." };
+  }
+
+  if (params.longitude < -180 || params.longitude > 180) {
+    return { error: "Longitude harus berada di antara -180 dan 180 derajat." };
+  }
+
+  const latStr = params.latitude.toFixed(7);
+  const lonStr = params.longitude.toFixed(7);
+  const radius = Math.max(10, Math.min(50000, Math.round(params.radiusMeters || 300)));
+
+  const applyToAll = params.applyToAll ?? (!params.classId);
+
+  if (applyToAll) {
+    // Update all classes taught by this lecturer
+    const lecturerCourses = await db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(eq(courses.lecturerId, lecturer.userId));
+
+    const courseIds = lecturerCourses.map((c) => c.id);
+    if (courseIds.length > 0) {
+      await db
+        .update(classes)
+        .set({
+          campusLatitude: latStr,
+          campusLongitude: lonStr,
+          campusRadiusMeters: radius,
+        })
+        .where(
+          sql`${classes.courseId} IN (${sql.join(
+            courseIds.map((id) => sql`${id}`),
+            sql`, `
+          )})`
+        );
+    }
+  } else if (params.classId) {
+    // Verify class ownership
+    const [cls] = await db
+      .select({ id: classes.id, ownerUserId: courses.lecturerId })
+      .from(classes)
+      .innerJoin(courses, eq(classes.courseId, courses.id))
+      .where(eq(classes.id, params.classId))
+      .limit(1);
+
+    if (!cls || cls.ownerUserId !== lecturer.userId) {
+      return { error: "Akses ditolak atau kelas tidak ditemukan." };
+    }
+
+    await db
+      .update(classes)
+      .set({
+        campusLatitude: latStr,
+        campusLongitude: lonStr,
+        campusRadiusMeters: radius,
+      })
+      .where(eq(classes.id, params.classId));
+  }
+
+  // Audit log
+  await db.insert(auditLogs).values({
+    id: randomUUID(),
+    actorUserId: lecturer.userId,
+    entityType: "classes",
+    entityId: params.classId || "all",
+    action: "update_campus_location",
+    afterData: {
+      latitude: latStr,
+      longitude: lonStr,
+      radiusMeters: radius,
+      applyToAll,
+    },
+  });
+
+  revalidatePath("/attendance");
+  revalidatePath("/settings");
+  revalidatePath("/classes");
+  if (params.classId) {
+    revalidatePath(`/classes/${params.classId}`);
+  }
+
+  return {
+    success: true,
+    latitude: latStr,
+    longitude: lonStr,
+    radiusMeters: radius,
+    applyToAll,
+  };
+}
+

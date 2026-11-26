@@ -17,6 +17,9 @@ import {
 import { getClassBarcodeData, toggleAttendanceSessionOpen } from "../actions";
 import { evaluateAttendanceTimeWindow } from "../attendance-utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { CampusLocationSettingModal } from "./CampusLocationSettingModal";
+import { SlidersHorizontal } from "lucide-react";
 
 interface ClassBarcodePresenterModalProps {
   classId: string;
@@ -35,6 +38,7 @@ export function ClassBarcodePresenterModal({
   const [isTogglingSession, setIsTogglingSession] = useState(false);
   const [isSimulation, setIsSimulation] = useState(false);
   const [simulatedWindow, setSimulatedWindow] = useState<"present" | "late">("present");
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Fetch barcode data
@@ -210,13 +214,28 @@ export function ClassBarcodePresenterModal({
           {/* Rules & Live Feed */}
           <div className="space-y-4 max-w-xs text-xs">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-              <div className="flex items-center gap-2 font-bold text-slate-800">
-                <MapPin className="w-4 h-4 text-cyan-600" />
-                <span>Geofencing Kampus Aktif</span>
+              <div className="flex items-center justify-between font-bold text-slate-800">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-cyan-600" />
+                  <span>Geofencing Kampus</span>
+                </div>
+                <Badge variant="primary" className="text-[10px]">
+                  {data?.classInfo?.campusRadiusMeters || 300}m
+                </Badge>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Hanya mahasiswa yang berada dalam radius <strong>{data?.classInfo?.campusRadiusMeters || 300} meter</strong> dari kampus yang dapat melakukan scan barcode.
+                Hanya mahasiswa dalam radius <strong>{data?.classInfo?.campusRadiusMeters || 300} meter</strong> dari kampus yang dapat scan barcode.
               </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLocationModalOpen(true)}
+                className="w-full text-xs h-7 gap-1.5 border-slate-300 bg-white hover:bg-slate-50 text-slate-700"
+              >
+                <SlidersHorizontal className="w-3 h-3 text-blue-600" />
+                Atur Titik Lokasi Kampus
+              </Button>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
@@ -289,6 +308,17 @@ export function ClassBarcodePresenterModal({
           </Button>
         </div>
       </div>
+
+      <CampusLocationSettingModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        classId={classId}
+        classNameTitle={data?.classInfo?.displayName}
+        initialLatitude={data?.classInfo?.campusLatitude}
+        initialLongitude={data?.classInfo?.campusLongitude}
+        initialRadiusMeters={data?.classInfo?.campusRadiusMeters}
+        onSaved={() => fetchData()}
+      />
     </div>
   );
 }

@@ -21,9 +21,13 @@ import {
   Calendar,
   Archive,
   ArrowLeft,
+  MapPin,
+  Radio,
+  SlidersHorizontal,
 } from "lucide-react";
 import { enrollStudentToClass, removeStudentFromClass } from "@/features/enrollments/actions";
 import { archiveClass } from "@/features/classes/actions";
+import { CampusLocationSettingModal } from "@/features/attendance/components/CampusLocationSettingModal";
 
 export interface ClassDetailData {
   id: string;
@@ -33,6 +37,9 @@ export interface ClassDetailData {
   status: "active" | "archived";
   gradingLockedAt: Date | null;
   gradesPublishedAt: Date | null;
+  campusLatitude?: string | null;
+  campusLongitude?: string | null;
+  campusRadiusMeters?: number | null;
   courseId: string;
   courseCode: string;
   courseName: string;
@@ -92,6 +99,12 @@ export function ClassDetailClient({
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [coords, setCoords] = useState({
+    latitude: parseFloat(classData.campusLatitude || "-6.914744"),
+    longitude: parseFloat(classData.campusLongitude || "107.60981"),
+    radiusMeters: classData.campusRadiusMeters || 300,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -447,6 +460,47 @@ export function ClassDetailClient({
             <CardTitle>Pengaturan &amp; Status Kelas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Campus Geofencing Location */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-red-500" /> Posisi Kampus &amp; Geofencing Presensi
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Validasi radius fisik untuk absensi barcode mahasiswa pada kelas ini.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsLocationModalOpen(true)}
+                  className="gap-1.5 shrink-0 bg-white"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+                  Atur Lokasi (Google Maps)
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[11px] text-slate-500 block">Latitude</span>
+                  <span className="font-mono font-semibold text-slate-800">{coords.latitude.toFixed(6)}</span>
+                </div>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[11px] text-slate-500 block">Longitude</span>
+                  <span className="font-mono font-semibold text-slate-800">{coords.longitude.toFixed(6)}</span>
+                </div>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[11px] text-slate-500 block">Radius Toleransi</span>
+                  <span className="font-semibold text-blue-600 flex items-center gap-1">
+                    <Radio className="w-3 h-3" /> {coords.radiusMeters} Meter
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="p-4 rounded-xl border border-[#C43D4B]/20 bg-[#FCECEE]/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h4 className="text-sm font-semibold text-[#C43D4B] flex items-center gap-1.5">
@@ -562,6 +616,18 @@ export function ClassDetailClient({
           </div>
         </div>
       </Modal>
+
+      {/* Modal Pengaturan Lokasi Kampus */}
+      <CampusLocationSettingModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        classId={classData.id}
+        classNameTitle={classData.displayName}
+        initialLatitude={coords.latitude}
+        initialLongitude={coords.longitude}
+        initialRadiusMeters={coords.radiusMeters}
+        onSaved={(newCoords) => setCoords(newCoords)}
+      />
     </div>
   );
 }
