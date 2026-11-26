@@ -142,18 +142,28 @@ describe("Phase 4 Attendance & Materials Calculation & Business Logic Tests", ()
       expect(res.status).toBe("open_late");
       expect(res.isAllowedToScan).toBe(true);
       expect(res.attendanceStatusIfScanned).toBe("late");
-      expect(res.minutesRemaining).toBe(45); // until 10:15 (15 min before end)
+      expect(res.minutesRemaining).toBe(60); // 60 min left until class finishes at 10:30
     });
 
-    it("evaluates 15 minutes before class end as closed", () => {
+    it("evaluates near class end as still open_late until hours finish", () => {
       // Class: 09:00 - 10:30. Current time: 10:20 (10 minutes before 10:30 end)
       const simulatedNow = new Date("2026-11-20T10:20:00");
       const res = evaluateAttendanceTimeWindow("09:00", "10:30", simulatedNow);
 
-      expect(res.status).toBe("closed");
-      expect(res.isAllowedToScan).toBe(false);
-      expect(res.attendanceStatusIfScanned).toBeNull();
+      expect(res.status).toBe("open_late");
+      expect(res.isAllowedToScan).toBe(true);
+      expect(res.attendanceStatusIfScanned).toBe("late");
       expect(res.minutesRemaining).toBe(10); // 10 min left in lecture
+    });
+
+    it("allows scanning when lecturer opens session early before schedule", () => {
+      // Class: 09:00 - 10:30. Lecturer opens session at 08:50 (10 minutes before)
+      const simulatedNow = new Date("2026-11-20T08:50:00");
+      const res = evaluateAttendanceTimeWindow("09:00", "10:30", simulatedNow, true);
+
+      expect(res.status).toBe("open_present");
+      expect(res.isAllowedToScan).toBe(true);
+      expect(res.attendanceStatusIfScanned).toBe("present");
     });
 
     it("evaluates after class end as finished", () => {

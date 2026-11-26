@@ -584,11 +584,6 @@ export async function getClassBarcodeData(classId: string) {
     await db.update(classes).set({ qrCodeToken: token }).where(eq(classes.id, classId));
   }
 
-  const timeWindow = evaluateAttendanceTimeWindow(
-    cls.startTime || "09:00",
-    cls.endTime || "10:30"
-  );
-
   // Fetch all sessions (16 meetings)
   const sessions = await db
     .select()
@@ -598,6 +593,13 @@ export async function getClassBarcodeData(classId: string) {
 
   // Find currently open session (latest opened)
   const activeSession = sessions.slice().reverse().find((s) => s.isOpen) || sessions[0] || null;
+
+  const timeWindow = evaluateAttendanceTimeWindow(
+    cls.startTime || "09:00",
+    cls.endTime || "10:30",
+    undefined,
+    activeSession?.isOpen ?? false
+  );
 
   let attendedStudents: Array<{
     name: string;
@@ -729,24 +731,7 @@ export async function scanStudentQrAttendance(input: {
     };
   }
 
-  // 4. Verify Automatic Time Window
-  const timeWindow = evaluateAttendanceTimeWindow(
-    cls.startTime || "09:00",
-    cls.endTime || "10:30"
-  );
-
-  if (!timeWindow.isAllowedToScan && !input.isSimulation) {
-    return {
-      error: timeWindow.message,
-      timeWindowStatus: timeWindow.status,
-    };
-  }
-
-  const finalStatus: "present" | "late" = input.isSimulation
-    ? "present"
-    : (timeWindow.attendanceStatusIfScanned || "present");
-
-  // 5. User Requirement: Otomatis hadir di saat pertemuan terakhir yang di-open oleh dosen
+  // 4. Verifikasi sesi pertemuan aktif yang dibuka oleh dosen
   const [openSession] = await db
     .select()
     .from(attendanceSessions)
@@ -759,11 +744,31 @@ export async function scanStudentQrAttendance(input: {
     .orderBy(desc(attendanceSessions.meetingNumber))
     .limit(1);
 
-  if (!openSession) {
+  if (!openSession && !input.isSimulation) {
     return {
-      error: "Sesi presensi belum dibuka oleh dosen untuk pertemuan saat ini. Silakan tunggu hingga dosen mengaktifkan/membuka pertemuan di kelas.",
+      error: "Sesi presensi belum dibuka oleh dosen untuk pertemuan saat ini. Silakan tunggu hingga dosen mengaktifkan / membuka sesi pertemuan di kelas.",
     };
   }
+
+  // 5. Evaluasi waktu perkuliahan (WIB) - sesi telah dibuka oleh dosen
+  const timeWindow = evaluateAttendanceTimeWindow(
+    cls.startTime || "09:00",
+    cls.endTime || "10:30",
+    undefined,
+    true // Sesi telah dibuka oleh dosen
+  );
+
+  // Presensi hanya otomatis ditutup jika jam perkuliahan telah berakhir ("saat jam habis baru otomatis mati")
+  if (!timeWindow.isAllowedToScan && !input.isSimulation) {
+    return {
+      error: timeWindow.message,
+      timeWindowStatus: timeWindow.status,
+    };
+  }
+
+  const finalStatus: "present" | "late" = input.isSimulation
+    ? "present"
+    : (timeWindow.attendanceStatusIfScanned || "present");
 
   // 6. Check existing attendance record for this open session
   const [existingRecord] = await db
@@ -900,16 +905,18 @@ export async function getStudentAttendanceHubData() {
   }
 
   const classesWithStatus = enrolled.map((cls) => {
+    const activeOpen = openSessionMap.get(cls.classId);
+
     const timeWindow = evaluateAttendanceTimeWindow(
       cls.startTime || "09:00",
-      cls.endTime || "10:30"
+      cls.endTime || "10:30",
+      undefined,
+      activeOpen ? true : false
     );
 
     const todayRecord = records.find(
       (r) => r.classId === cls.classId && r.sessionDate === todayDate
     );
-
-    const activeOpen = openSessionMap.get(cls.classId);
 
     return {
       ...cls,

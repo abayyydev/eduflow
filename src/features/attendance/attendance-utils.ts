@@ -32,13 +32,50 @@ export type TimeWindowEvaluation = {
   minutesRemaining: number;
 };
 
+/**
+ * Gets minutes from midnight in Indonesia Western Time (WIB / Asia/Jakarta).
+ * Guarantees consistent evaluation across servers (Vercel/cPanel UTC) and clients.
+ */
+export function getJakartaMinutes(simulatedNow?: Date): number {
+  if (simulatedNow) {
+    return simulatedNow.getHours() * 60 + simulatedNow.getMinutes();
+  }
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jakarta",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  let h = 0;
+  let m = 0;
+  for (const p of parts) {
+    if (p.type === "hour") h = parseInt(p.value, 10);
+    if (p.type === "minute") m = parseInt(p.value, 10);
+  }
+  if (h === 24) h = 0;
+  return h * 60 + m;
+}
+
+/**
+ * Evaluates attendance time window based on lecturer control and class schedule.
+ * User requirement:
+ * - Pembukaan presensi dikontrol oleh dosen (begitu dibuka oleh dosen, mahasiswa langsung bisa absen).
+ * - Tidak ada blokir otomatis sebelum mulai jika dosen sudah membuka sesi.
+ * - Presensi hanya otomatis mati saat jam pelajaran selesai (now > endTime).
+ * - Status kehadiran:
+ *   - Jika absen dalam 15 menit pertama jadwal kuliah (atau jika dibuka lebih awal): HADIR.
+ *   - Jika absen setelah 15 menit pertama hingga jam kuliah habis: TERLAMBAT.
+ *   - Jika jam kuliah habis: FINISHED (Presensi ditutup otomatis).
+ */
 export function evaluateAttendanceTimeWindow(
   startTimeStr: string = "09:00",
   endTimeStr: string = "10:30",
-  simulatedNow?: Date
+  simulatedNow?: Date,
+  isSessionOpen?: boolean
 ): TimeWindowEvaluation {
-  const now = simulatedNow || new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = getJakartaMinutes(simulatedNow);
 
   const [startH, startM] = startTimeStr.split(":").map(Number);
   const [endH, endM] = endTimeStr.split(":").map(Number);
@@ -46,63 +83,62 @@ export function evaluateAttendanceTimeWindow(
   const startMinutes = (startH || 9) * 60 + (startM || 0);
   const endMinutes = (endH || 10) * 60 + (endM || 30);
 
-  const presentEndMinutes = startMinutes + 15; // 15 menit pertama = HADIR
-  const lateEndMinutes = endMinutes - 15;      // 15 menit sebelum selesai = batas TERLAMBAT
+  const presentEndMinutes = startMinutes + 15; // 15 menit pertama dari jadwal = HADIR
 
-  if (currentMinutes < startMinutes) {
-    const diff = startMinutes - currentMinutes;
+  // 1. Jika jam perkuliahan sudah selesai/habis (melewati jam selesai perkuliahan): otomatis mati
+  if (currentMinutes > endMinutes) {
     return {
-      status: "not_started",
-      label: "Belum Dimulai",
+      status: "finished",
+      label: "Perkuliahan Selesai",
       isAllowedToScan: false,
       attendanceStatusIfScanned: null,
-      message: `Presensi otomatis aktif pukul ${startTimeStr} WIB (dalam ${diff} menit).`,
+      message: `Jadwal perkuliahan telah berakhir (pukul ${endTimeStr} WIB). Presensi otomatis ditutup.`,
+      minutesRemaining: 0,
+    };
+  }
+
+  // 2. Tentukan status keterbukaan sesi
+  // Jika isSessionOpen tidak dipassing secara eksplisit, tentukan berdasarkan rentang jam kuliah
+  const open = isSessionOpen !== undefined
+    ? isSessionOpen
+    : (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+
+  if (!open) {
+    const diff = Math.max(0, startMinutes - currentMinutes);
+    return {
+      status: "not_started",
+      label: "Sesi Belum Dibuka",
+      isAllowedToScan: false,
+      attendanceStatusIfScanned: null,
+      message: "Sesi presensi belum dibuka oleh dosen. Mahasiswa dapat memindai presensi setelah dosen membuka pertemuan di kelas.",
       minutesRemaining: diff,
     };
   }
 
-  if (currentMinutes >= startMinutes && currentMinutes < presentEndMinutes) {
-    const diff = presentEndMinutes - currentMinutes;
+  // 3. Sesi dibuka oleh dosen & jam perkuliahan belum habis:
+  // a. Tepat waktu (sebelum jadwal atau dalam 15 menit pertama)
+  if (currentMinutes <= presentEndMinutes) {
+    const diff = Math.max(0, presentEndMinutes - currentMinutes);
     return {
       status: "open_present",
       label: "Buka (Hadir)",
       isAllowedToScan: true,
       attendanceStatusIfScanned: "present",
-      message: `Sesi presensi HADIR aktif (sisa ${diff} menit sebelum terhitung terlambat).`,
+      message: diff > 0
+        ? `Sesi presensi HADIR aktif (sisa ${diff} menit sebelum batas toleransi keterlambatan).`
+        : "Sesi presensi HADIR aktif dibuka oleh dosen.",
       minutesRemaining: diff,
     };
   }
 
-  if (currentMinutes >= presentEndMinutes && currentMinutes < lateEndMinutes) {
-    const diff = lateEndMinutes - currentMinutes;
-    return {
-      status: "open_late",
-      label: "Buka (Terlambat)",
-      isAllowedToScan: true,
-      attendanceStatusIfScanned: "late",
-      message: `Presensi terhitung TERLAMBAT. Sesi ditutup otomatis dalam ${diff} menit (15 mnt sebelum kuliah usai).`,
-      minutesRemaining: diff,
-    };
-  }
-
-  if (currentMinutes >= lateEndMinutes && currentMinutes <= endMinutes) {
-    const diff = endMinutes - currentMinutes;
-    return {
-      status: "closed",
-      label: "Presensi Ditutup",
-      isAllowedToScan: false,
-      attendanceStatusIfScanned: null,
-      message: `Presensi ditutup otomatis pada 15 menit sebelum kuliah selesai. Perkuliahan usai dalam ${diff} menit.`,
-      minutesRemaining: diff,
-    };
-  }
-
+  // b. Terlambat (setelah 15 menit pertama hingga jam kuliah habis)
+  const remainingUntilEnd = Math.max(0, endMinutes - currentMinutes);
   return {
-    status: "finished",
-    label: "Perkuliahan Selesai",
-    isAllowedToScan: false,
-    attendanceStatusIfScanned: null,
-    message: "Jadwal perkuliahan untuk hari ini telah selesai. Barcode akan otomatis aktif kembali pada jam kuliah jadwal berikutnya.",
-    minutesRemaining: 0,
+    status: "open_late",
+    label: "Buka (Terlambat)",
+    isAllowedToScan: true,
+    attendanceStatusIfScanned: "late",
+    message: `Sesi presensi aktif dibuka oleh dosen (Status: TERLAMBAT). Sesi otomatis berakhir saat kuliah selesai (${remainingUntilEnd} menit lagi).`,
+    minutesRemaining: remainingUntilEnd,
   };
 }

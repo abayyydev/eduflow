@@ -163,9 +163,8 @@ export function ClassBarcodePresenterModal({
                 size="sm"
                 disabled={isTogglingSession || !currentSelected}
                 onClick={() => handleToggleActiveSession(currentSelected.id, !!isCurrentlyOpen)}
-                className={`rounded-xl shrink-0 font-extrabold text-xs ${
-                  !isCurrentlyOpen ? "bg-emerald-600 hover:bg-emerald-700" : ""
-                }`}
+                className={`rounded-xl shrink-0 font-extrabold text-xs ${!isCurrentlyOpen ? "bg-emerald-600 hover:bg-emerald-700" : ""
+                  }`}
               >
                 {isCurrentlyOpen ? "Tutup Sesi Ini" : "Buka Sesi Ini untuk Barcode"}
               </Button>

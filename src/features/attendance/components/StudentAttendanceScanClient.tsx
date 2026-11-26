@@ -465,16 +465,16 @@ export function StudentAttendanceScanClient({ initialData }: StudentAttendanceSc
                   🟡 Setelah 15 Menit
                 </span>
                 <p className="text-[11px] text-amber-700 leading-relaxed">
-                  Scan setelah 15 menit pertama hingga 15 menit sebelum kuliah selesai dicatat <strong>TERLAMBAT</strong>.
+                  Scan setelah 15 menit pertama hingga jam kuliah selesai dicatat <strong>TERLAMBAT</strong>.
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-red-50/70 border border-red-100 space-y-1">
                 <span className="font-extrabold text-red-800 block">
-                  🔴 15 Menit Sebelum Selesai
+                  🔴 Saat Jam Kuliah Selesai
                 </span>
                 <p className="text-[11px] text-red-700 leading-relaxed">
-                  Presensi ditutup otomatis. Mahasiswa yang belum scan tidak dapat absen dan dicatat <strong>ALPHA</strong>.
+                  Presensi ditutup otomatis saat jam perkuliahan berakhir. Mahasiswa yang belum scan tidak dapat absen dan dicatat <strong>ALPHA</strong>.
                 </p>
               </div>
             </div>
