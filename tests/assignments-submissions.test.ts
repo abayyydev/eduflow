@@ -3,7 +3,7 @@ import { db } from "../src/server/db";
 import { assignments, submissions, students } from "../src/server/db/schema";
 import { eq } from "drizzle-orm";
 import { savePrivateFile, readPrivateFile } from "../src/server/storage";
-import { formatDateTime, toDateTimeLocalString, isPastDeadline, parseDateSafe } from "../src/lib/utils";
+import { formatDateTime, toDateTimeLocalString, isPastDeadline, parseDateSafe, formatFileSize } from "../src/lib/utils";
 
 describe("Assignment & Submission Lifecycle Tests", () => {
   let demoAssignment: any;
@@ -114,5 +114,29 @@ describe("Assignment & Submission Lifecycle Tests", () => {
 
     const parsed = parseDateSafe("2026-11-26 16:00:00");
     expect(parsed?.getUTCHours()).toBe(16);
+  });
+
+  it("verifies multiple file upload helpers and formatFileSize", async () => {
+    expect(formatFileSize(0)).toBe("0 B");
+    expect(formatFileSize(1024)).toBe("1 KB");
+    expect(formatFileSize(1024 * 1024 * 2.5)).toBe("2.5 MB");
+
+    // Mock multiple file saves
+    const file1 = new File([new Blob(["file 1"])], "laporan.pdf", { type: "application/pdf" });
+    const file2 = new File([new Blob(["file 2 content"])], "source.zip", { type: "application/zip" });
+
+    const s1 = await savePrivateFile(file1, "multi_test");
+    const s2 = await savePrivateFile(file2, "multi_test");
+
+    expect(s1.fileObjectKey).toBeDefined();
+    expect(s1.originalFilename).toBe("laporan.pdf");
+    expect(s2.fileObjectKey).toBeDefined();
+    expect(s2.originalFilename).toBe("source.zip");
+
+    const r1 = await readPrivateFile(s1.fileObjectKey);
+    const r2 = await readPrivateFile(s2.fileObjectKey);
+
+    expect(r1.buffer.toString()).toBe("file 1");
+    expect(r2.buffer.toString()).toBe("file 2 content");
   });
 });

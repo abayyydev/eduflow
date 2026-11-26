@@ -17,8 +17,10 @@ import {
   CheckCircle2,
   Send,
   Save,
+  FileText,
+  X,
 } from "lucide-react";
-import { formatDateTime, isPastDeadline } from "@/lib/utils";
+import { formatDateTime, formatFileSize, isPastDeadline } from "@/lib/utils";
 import { submitStudentAssignment } from "../actions";
 
 export interface StudentAssignmentDetailData {
@@ -57,6 +59,13 @@ export interface StudentSubmissionData {
   gradedAt: Date | null;
 }
 
+export interface SubmissionFileItem {
+  id: string;
+  fileObjectKey: string;
+  originalFilename: string;
+  fileSize: number;
+}
+
 export interface StudentVersionData {
   id: string;
   submissionId: string;
@@ -66,6 +75,7 @@ export interface StudentVersionData {
   externalUrl: string | null;
   note: string | null;
   submittedAt: Date;
+  files?: SubmissionFileItem[];
 }
 
 interface StudentSubmissionClientProps {
@@ -80,7 +90,7 @@ export function StudentSubmissionClient({
   versions,
 }: StudentSubmissionClientProps) {
   const router = useRouter();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [externalUrl, setExternalUrl] = useState(
     submission?.status === "draft" && versions[0]?.externalUrl
       ? versions[0].externalUrl
@@ -99,6 +109,31 @@ export function StudentSubmissionClient({
   const isLate = isPastDeadline(assignment.dueAt);
   const isClosed = assignment.status === "closed" || (isLate && !assignment.allowLate);
 
+  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const incoming = Array.from(e.target.files);
+    const maxBytes = (assignment.maxFileSizeMb || 10) * 1024 * 1024;
+    const oversized = incoming.filter((f) => f.size > maxBytes);
+    if (oversized.length > 0) {
+      setErrorMsg(
+        `File "${oversized.map((f) => f.name).join(", ")}" melebihi batas ${assignment.maxFileSizeMb} MB per file.`
+      );
+      e.target.value = "";
+      return;
+    }
+    setErrorMsg(null);
+    setSelectedFiles((prev) => {
+      const existingNames = new Set(prev.map((f) => f.name));
+      const newlyAdded = incoming.filter((f) => !existingNames.has(f.name));
+      return [...prev, ...newlyAdded];
+    });
+    e.target.value = "";
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (action: "draft" | "submit") => {
     setIsLoading(true);
     setErrorMsg(null);
@@ -109,7 +144,9 @@ export function StudentSubmissionClient({
     formData.append("action", action);
     if (externalUrl) formData.append("externalUrl", externalUrl);
     if (note) formData.append("note", note);
-    if (selectedFile) formData.append("file", selectedFile);
+    for (const file of selectedFiles) {
+      formData.append("files", file);
+    }
 
     const res = await submitStudentAssignment(formData);
 
@@ -125,6 +162,7 @@ export function StudentSubmissionClient({
         ? "Draft berhasil disimpan."
         : "Tugas berhasil dikirimkan ke dosen!"
     );
+    setSelectedFiles([]);
     router.refresh();
   };
 
@@ -163,6 +201,15 @@ export function StudentSubmissionClient({
                 <span>&bull;</span>
                 <span>Nilai Maks: {assignment.maxScore} Poin</span>
                 <span>&bull;</span>
+                <span>
+                  Metode:{" "}
+                  {assignment.submissionMode === "both"
+                    ? "File & Tautan URL"
+                    : assignment.submissionMode === "file"
+                    ? "Unggah File"
+                    : "Tautan URL"}
+                </span>
+                <span>&bull;</span>
                 <span>Dosen: {assignment.lecturerName}</span>
               </p>
             </div>
@@ -180,52 +227,58 @@ export function StudentSubmissionClient({
         </div>
       </div>
 
-      {/* Revision / Feedback Alert Banner */}
-      {submission?.status === "returned_for_revision" && (
-        <div className="p-4 rounded-xl border border-[#B7791F]/30 bg-[#FDF5E6] flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-[#B7791F] shrink-0 mt-0.5" />
-          <div className="space-y-1 text-xs">
-            <h4 className="font-bold text-[#B7791F]">Perlu Revisi dari Dosen</h4>
-            <p className="text-[#172033]">
-              Catatan Dosen: <em>&quot;{submission.feedback || "Silakan perbaiki tugas sesuai petunjuk."}&quot;</em>
-            </p>
-            <p className="text-[#667085]">
-              Silakan unggah versi perbaikan di bawah ini dan klik &quot;Kirim Tugas&quot;.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Graded Result Card */}
+      {/* Grade / Feedback Card if graded */}
       {submission?.status === "graded" && (
-        <Card className="border-[#16845B]/30 bg-[#E8F5EF]/30 p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-[#16845B] uppercase tracking-wider flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4" /> Tugas Selesai Dinilai
-              </span>
-              <p className="text-xs text-[#667085]">
-                Dinilai pada: {formatDateTime(submission.gradedAt)}
-              </p>
-              {submission.feedback && (
-                <div className="pt-2 text-xs">
-                  <span className="font-semibold text-[#172033]">Feedback Dosen:</span>
-                  <p className="p-2.5 bg-white rounded-lg border border-[#E4E9F2] text-[#172033] mt-1">
-                    {submission.feedback}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="text-center sm:text-right bg-white p-3.5 rounded-xl border border-[#16845B]/20">
-              <span className="text-xs text-[#667085] block">Nilai yang Diperoleh</span>
-              <span className="text-3xl font-extrabold text-[#16845B] tabular-nums">
+        <Card className="border-[#16845B]/30 bg-[#E8F5EF]/30">
+          <CardHeader>
+            <CardTitle className="text-[#16845B] flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              Hasil Penilaian
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-[#16845B]">
                 {submission.score}
               </span>
-              <span className="text-xs text-[#667085]"> / {assignment.maxScore}</span>
+              <span className="text-sm font-medium text-[#667085]">
+                / {assignment.maxScore} Poin
+              </span>
             </div>
-          </div>
+            {submission.feedback && (
+              <div className="p-3 rounded-lg bg-white border border-[#E4E9F2] text-xs">
+                <span className="font-semibold text-[#172033] block mb-1">
+                  Catatan dari Dosen:
+                </span>
+                <p className="text-[#667085] whitespace-pre-line leading-relaxed">
+                  {submission.feedback}
+                </p>
+              </div>
+            )}
+            {submission.gradedAt && (
+              <p className="text-[11px] text-[#667085]">
+                Dinilai pada: {formatDateTime(submission.gradedAt)}
+              </p>
+            )}
+          </CardContent>
         </Card>
+      )}
+
+      {/* Revision Notice if returned for revision */}
+      {submission?.status === "returned_for_revision" && (
+        <div className="p-4 rounded-xl bg-[#FDF5E6] border border-[#B7791F]/30 text-xs">
+          <div className="flex items-center gap-2 font-bold text-[#B7791F] mb-1">
+            <AlertTriangle className="w-4 h-4" /> Tugas Diminta Revisi oleh Dosen
+          </div>
+          {submission.feedback && (
+            <p className="text-[#172033] mt-1 pl-6">
+              Catatan perbaikan: &quot;{submission.feedback}&quot;
+            </p>
+          )}
+          <p className="text-[#667085] mt-1 pl-6">
+            Silakan perbaiki file atau tautan tugas Anda di bawah dan kirim ulang.
+          </p>
+        </div>
       )}
 
       {/* Submission Form Card */}
@@ -261,37 +314,84 @@ export function StudentSubmissionClient({
 
             {/* File Upload Section */}
             {assignment.submissionMode !== "url" && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-[#172033]">
-                  Unggah File Dokumen / ZIP
-                </label>
-                <div className="border-2 border-dashed border-[#E4E9F2] rounded-xl p-5 text-center hover:border-[#2457D6]/50 transition-colors">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-[#172033]">
+                    Unggah File Tugas (Bisa Multiple File)
+                  </label>
+                  <span className="text-[11px] text-[#667085]">
+                    Maks. {assignment.maxFileSizeMb} MB per file
+                  </span>
+                </div>
+
+                <div className="border-2 border-dashed border-[#E4E9F2] rounded-xl p-5 text-center hover:border-[#2457D6]/50 transition-colors bg-white">
                   <input
                     type="file"
                     id="fileUpload"
+                    multiple
                     className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedFile(e.target.files[0]);
-                      }
-                    }}
+                    onChange={handleFilesChange}
                     disabled={isLoading}
                   />
                   <label
                     htmlFor="fileUpload"
                     className="cursor-pointer flex flex-col items-center gap-2"
                   >
-                    <Upload className="w-6 h-6 text-[#2457D6]" />
-                    <span className="text-xs font-semibold text-[#2457D6]">
-                      {selectedFile
-                        ? selectedFile.name
-                        : "Pilih file untuk diunggah"}
-                    </span>
-                    <span className="text-[11px] text-[#667085]">
-                      Maksimum ukuran file: {assignment.maxFileSizeMb} MB
-                    </span>
+                    <div className="w-10 h-10 rounded-full bg-[#EEF3FF] flex items-center justify-center text-[#2457D6]">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-[#2457D6]">
+                        Klik untuk memilih file (bisa pilih beberapa file sekaligus)
+                      </span>
+                      <p className="text-[11px] text-[#667085] mt-0.5">
+                        Dokumen PDF, Word, Excel, ZIP, Gambar, atau source code
+                      </p>
+                    </div>
                   </label>
                 </div>
+
+                {/* List of selected files to upload */}
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-xs font-medium text-[#172033]">
+                      <span>File terpilih ({selectedFiles.length}):</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFiles([])}
+                        className="text-[#C43D4B] hover:underline text-[11px]"
+                      >
+                        Hapus Semua
+                      </button>
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {selectedFiles.map((file, idx) => (
+                        <div
+                          key={`${file.name}-${idx}`}
+                          className="flex items-center justify-between p-2 rounded-lg bg-[#F6F8FC] border border-[#E4E9F2] text-xs"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <FileText className="w-4 h-4 text-[#2457D6] shrink-0" />
+                            <span className="font-medium text-[#172033] truncate">
+                              {file.name}
+                            </span>
+                            <span className="text-[#667085] text-[11px] shrink-0">
+                              ({formatFileSize(file.size)})
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            className="text-[#667085] hover:text-[#C43D4B] p-1 rounded-md transition-colors"
+                            title="Hapus file ini"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -368,7 +468,7 @@ export function StudentSubmissionClient({
                   <tr>
                     <th className="py-2.5 px-4 font-semibold">Versi</th>
                     <th className="py-2.5 px-4 font-semibold">Waktu Pengumpulan</th>
-                    <th className="py-2.5 px-4 font-semibold">Lampiran / Link</th>
+                    <th className="py-2.5 px-4 font-semibold">Lampiran Berkas / Tautan</th>
                     <th className="py-2.5 px-4 font-semibold">Catatan</th>
                   </tr>
                 </thead>
@@ -382,17 +482,37 @@ export function StudentSubmissionClient({
                         {formatDateTime(v.submittedAt)}
                       </td>
                       <td className="py-2.5 px-4">
-                        <div className="flex flex-col gap-1">
-                          {v.originalFilename && (
+                        <div className="flex flex-col gap-1.5">
+                          {v.files && v.files.length > 0 ? (
+                            v.files.map((file) => (
+                              <a
+                                key={file.id}
+                                href={`/api/files/submission/${v.id}?fileId=${file.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-[#2457D6] hover:underline font-medium"
+                              >
+                                <Download className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">{file.originalFilename}</span>
+                                {file.fileSize > 0 && (
+                                  <span className="text-[10px] text-[#667085] shrink-0">
+                                    ({formatFileSize(file.fileSize)})
+                                  </span>
+                                )}
+                              </a>
+                            ))
+                          ) : v.originalFilename ? (
                             <a
                               href={`/api/files/submission/${v.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[#2457D6] hover:underline font-medium"
+                              className="inline-flex items-center gap-1.5 text-[#2457D6] hover:underline font-medium"
                             >
-                              <Download className="w-3 h-3" /> {v.originalFilename}
+                              <Download className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate">{v.originalFilename}</span>
                             </a>
-                          )}
+                          ) : null}
+
                           {v.externalUrl && (
                             <a
                               href={v.externalUrl}
@@ -400,7 +520,7 @@ export function StudentSubmissionClient({
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-[#16845B] hover:underline font-medium"
                             >
-                              <ExternalLink className="w-3 h-3" /> Buka Tautan Eksternal
+                              <ExternalLink className="w-3.5 h-3.5 shrink-0" /> Buka Tautan Eksternal
                             </a>
                           )}
                         </div>

@@ -7,6 +7,7 @@ import {
   enrollments,
   submissions,
   submissionVersions,
+  submissionFiles,
   courses,
   lecturers,
   academicTerms,
@@ -17,6 +18,29 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { savePrivateFile } from "@/server/storage";
 import { isPastDeadline } from "@/lib/utils";
+
+let hasEnsuredSubmissionFilesTable = false;
+export async function ensureSubmissionFilesTable() {
+  if (hasEnsuredSubmissionFilesTable) return;
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS \`submission_files\` (
+        \`id\` varchar(36) NOT NULL,
+        \`version_id\` varchar(36) NOT NULL,
+        \`file_object_key\` varchar(500) NOT NULL,
+        \`original_filename\` varchar(255) NOT NULL,
+        \`file_size\` int NOT NULL DEFAULT 0,
+        \`mime_type\` varchar(120) DEFAULT NULL,
+        \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`id\`),
+        KEY \`idx_sub_files_version\` (\`version_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    hasEnsuredSubmissionFilesTable = true;
+  } catch {
+    // Handled gracefully if table exists or permissions are restricted
+  }
+}
 
 export async function getStudentAssignmentDetail(assignmentId: string) {
   const student = await requireStudent();
@@ -82,19 +106,96 @@ export async function getStudentAssignmentDetail(assignmentId: string) {
     )
     .limit(1);
 
-  // 4. Get submission versions
-  const versions = submission
-    ? await db
-        .select()
-        .from(submissionVersions)
-        .where(eq(submissionVersions.submissionId, submission.id))
-        .orderBy(desc(submissionVersions.versionNumber))
-    : [];
+  // 4. Get submission versions with files
+  let versionsWithFiles: Array<{
+    id: string;
+    submissionId: string;
+    versionNumber: number;
+    fileObjectKey: string | null;
+    originalFilename: string | null;
+    externalUrl: string | null;
+    note: string | null;
+    submittedAt: Date;
+    files: Array<{
+      id: string;
+      fileObjectKey: string;
+      originalFilename: string;
+      fileSize: number;
+    }>;
+  }> = [];
+
+  if (submission) {
+    await ensureSubmissionFilesTable();
+    const rawVersions = await db
+      .select()
+      .from(submissionVersions)
+      .where(eq(submissionVersions.submissionId, submission.id))
+      .orderBy(desc(submissionVersions.versionNumber));
+
+    if (rawVersions.length > 0) {
+      const versionIds = rawVersions.map((v) => v.id);
+      let allFiles: Array<{
+        id: string;
+        versionId: string;
+        fileObjectKey: string;
+        originalFilename: string;
+        fileSize: number;
+      }> = [];
+
+      try {
+        allFiles = await db
+          .select({
+            id: submissionFiles.id,
+            versionId: submissionFiles.versionId,
+            fileObjectKey: submissionFiles.fileObjectKey,
+            originalFilename: submissionFiles.originalFilename,
+            fileSize: submissionFiles.fileSize,
+          })
+          .from(submissionFiles)
+          .where(
+            sql`${submissionFiles.versionId} IN (${sql.join(
+              versionIds.map((id) => sql`${id}`),
+              sql`, `
+            )})`
+          );
+      } catch {
+        // Fallback if table query fails
+      }
+
+      const filesByVersion = new Map<string, typeof allFiles>();
+      for (const f of allFiles) {
+        if (!filesByVersion.has(f.versionId)) filesByVersion.set(f.versionId, []);
+        filesByVersion.get(f.versionId)!.push(f);
+      }
+
+      versionsWithFiles = rawVersions.map((v) => {
+        const vFiles = filesByVersion.get(v.id) || [];
+        const finalFiles =
+          vFiles.length > 0
+            ? vFiles
+            : v.fileObjectKey
+            ? [
+                {
+                  id: v.id,
+                  fileObjectKey: v.fileObjectKey,
+                  originalFilename: v.originalFilename || "submission_file.bin",
+                  fileSize: 0,
+                },
+              ]
+            : [];
+
+        return {
+          ...v,
+          files: finalFiles,
+        };
+      });
+    }
+  }
 
   return {
     assignment,
     submission: submission || null,
-    versions,
+    versions: versionsWithFiles,
   };
 }
 
@@ -160,7 +261,21 @@ export async function submitStudentAssignment(formData: FormData) {
   const isDraft = formData.get("action") === "draft";
   const externalUrl = (formData.get("externalUrl") as string)?.trim() || null;
   const note = (formData.get("note") as string)?.trim() || null;
-  const file = formData.get("file") as File | null;
+
+  // Retrieve multiple uploaded files or fallback to single file
+  const rawFiles = formData.getAll("files");
+  const singleFile = formData.get("file");
+  const uploadedFiles: File[] = [];
+
+  for (const item of rawFiles) {
+    if (item && typeof item === "object" && "size" in item && (item as File).size > 0) {
+      uploadedFiles.push(item as File);
+    }
+  }
+
+  if (uploadedFiles.length === 0 && singleFile && typeof singleFile === "object" && "size" in singleFile && (singleFile as File).size > 0) {
+    uploadedFiles.push(singleFile as File);
+  }
 
   if (!assignmentId) {
     return { error: "ID tugas tidak valid." };
@@ -181,12 +296,14 @@ export async function submitStudentAssignment(formData: FormData) {
     return { error: "Tenggat waktu pengumpulan telah berakhir dan keterlambatan tidak diizinkan." };
   }
 
+  const hasFiles = uploadedFiles.length > 0;
+
   // Validation of input based on mode (if not draft)
   if (!isDraft) {
     if (assignment.submissionMode === "url" && !externalUrl) {
       return { error: "Tautan URL wajib diisi untuk tugas ini." };
     }
-    if (assignment.submissionMode === "file" && (!file || file.size === 0)) {
+    if (assignment.submissionMode === "file" && !hasFiles) {
       if (!submission || (await getPreviousFileVersion(submission.id)) === null) {
         return { error: "File pengumpulan wajib diunggah untuk tugas ini." };
       }
@@ -194,7 +311,7 @@ export async function submitStudentAssignment(formData: FormData) {
     if (
       assignment.submissionMode === "both" &&
       !externalUrl &&
-      (!file || file.size === 0)
+      !hasFiles
     ) {
       if (!submission) {
         return { error: "Harap unggah file atau cantumkan tautan URL tugas." };
@@ -213,21 +330,46 @@ export async function submitStudentAssignment(formData: FormData) {
     }
   }
 
-  // Handle file save if uploaded
+  // Handle files save if uploaded
+  const maxBytes = assignment.maxFileSizeMb * 1024 * 1024;
+  for (const f of uploadedFiles) {
+    if (f.size > maxBytes) {
+      return {
+        error: `File "${f.name}" melebihi batas maksimum (${assignment.maxFileSizeMb} MB).`,
+      };
+    }
+  }
+
+  await ensureSubmissionFilesTable();
+
+  const savedFiles: Array<{
+    id: string;
+    fileObjectKey: string;
+    originalFilename: string;
+    fileSize: number;
+    mimeType: string;
+  }> = [];
+
+  for (const f of uploadedFiles) {
+    const saved = await savePrivateFile(f, `asg_${assignmentId.slice(0, 8)}`);
+    savedFiles.push({
+      id: randomUUID(),
+      fileObjectKey: saved.fileObjectKey,
+      originalFilename: saved.originalFilename,
+      fileSize: saved.fileSize,
+      mimeType: saved.mimeType,
+    });
+  }
+
   let fileObjectKey: string | null = null;
   let originalFilename: string | null = null;
 
-  if (file && file.size > 0) {
-    const maxBytes = assignment.maxFileSizeMb * 1024 * 1024;
-    if (file.size > maxBytes) {
-      return {
-        error: `Ukuran file melebihi batas maksimum (${assignment.maxFileSizeMb} MB).`,
-      };
-    }
-
-    const saved = await savePrivateFile(file, `asg_${assignmentId.slice(0, 8)}`);
-    fileObjectKey = saved.fileObjectKey;
-    originalFilename = saved.originalFilename;
+  if (savedFiles.length > 0) {
+    fileObjectKey = savedFiles[0].fileObjectKey;
+    originalFilename =
+      savedFiles.length === 1
+        ? savedFiles[0].originalFilename
+        : `${savedFiles[0].originalFilename} (+${savedFiles.length - 1} file lainnya)`;
   }
 
   // Determine submission status
@@ -270,9 +412,11 @@ export async function submitStudentAssignment(formData: FormData) {
       .where(eq(submissions.id, submission.id));
   }
 
+  const newVersionId = randomUUID();
+
   // Create submission version entry
   await db.insert(submissionVersions).values({
-    id: randomUUID(),
+    id: newVersionId,
     submissionId: submissionId!,
     versionNumber: nextVersionNumber,
     fileObjectKey,
@@ -281,6 +425,24 @@ export async function submitStudentAssignment(formData: FormData) {
     note,
     submittedAt: now,
   });
+
+  // Save each file in submission_files
+  if (savedFiles.length > 0) {
+    for (const sf of savedFiles) {
+      try {
+        await db.insert(submissionFiles).values({
+          id: sf.id,
+          versionId: newVersionId,
+          fileObjectKey: sf.fileObjectKey,
+          originalFilename: sf.originalFilename,
+          fileSize: sf.fileSize,
+          mimeType: sf.mimeType,
+        });
+      } catch {
+        // Fallback
+      }
+    }
+  }
 
   revalidatePath(`/student/assignments/${assignmentId}`);
   revalidatePath("/student/assignments");

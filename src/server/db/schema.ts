@@ -410,6 +410,21 @@ export const submissionVersions = mysqlTable("submission_versions", {
     .notNull(),
 });
 
+// 13b. Submission Files (Supports Multiple Files per Submission Version)
+export const submissionFiles = mysqlTable("submission_files", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  versionId: varchar("version_id", { length: 36 })
+    .notNull()
+    .references(() => submissionVersions.id, { onDelete: "cascade" }),
+  fileObjectKey: varchar("file_object_key", { length: 500 }).notNull(),
+  originalFilename: varchar("original_filename", { length: 255 }).notNull(),
+  fileSize: int("file_size").default(0).notNull(),
+  mimeType: varchar("mime_type", { length: 120 }),
+  createdAt: datetime("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
 // 14. Grades
 export const grades = mysqlTable(
   "grades",

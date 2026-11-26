@@ -9,6 +9,7 @@ import {
   students,
   submissions,
   submissionVersions,
+  submissionFiles,
   assessmentItems,
   gradingCategories,
   grades,
@@ -193,9 +194,60 @@ export async function getAssignmentSubmissionsList(assignmentId: string) {
     }
   }
 
+  const versionIds = versions.map((v) => v.id);
+  let allSubFiles: Array<{
+    id: string;
+    versionId: string;
+    fileObjectKey: string;
+    originalFilename: string;
+    fileSize: number;
+  }> = [];
+
+  if (versionIds.length > 0) {
+    try {
+      allSubFiles = await db
+        .select({
+          id: submissionFiles.id,
+          versionId: submissionFiles.versionId,
+          fileObjectKey: submissionFiles.fileObjectKey,
+          originalFilename: submissionFiles.originalFilename,
+          fileSize: submissionFiles.fileSize,
+        })
+        .from(submissionFiles)
+        .where(
+          sql`${submissionFiles.versionId} IN (${sql.join(
+            versionIds.map((id) => sql`${id}`),
+            sql`, `
+          )})`
+        );
+    } catch {
+      // Graceful fallback if table is not yet created
+    }
+  }
+
+  const filesByVersion = new Map<string, typeof allSubFiles>();
+  for (const f of allSubFiles) {
+    if (!filesByVersion.has(f.versionId)) filesByVersion.set(f.versionId, []);
+    filesByVersion.get(f.versionId)!.push(f);
+  }
+
   return enrolledStudents.map((st) => {
     const sub = subMap.get(st.studentUserId) || null;
     const latestVersion = sub ? versionMap.get(sub.id) || null : null;
+    const vFiles = latestVersion ? filesByVersion.get(latestVersion.id) || [] : [];
+    const finalFiles =
+      vFiles.length > 0
+        ? vFiles
+        : latestVersion?.fileObjectKey
+        ? [
+            {
+              id: latestVersion.id,
+              fileObjectKey: latestVersion.fileObjectKey,
+              originalFilename: latestVersion.originalFilename || "submission_file.bin",
+              fileSize: 0,
+            },
+          ]
+        : [];
 
     return {
       studentUserId: st.studentUserId,
@@ -218,6 +270,7 @@ export async function getAssignmentSubmissionsList(assignmentId: string) {
             externalUrl: latestVersion.externalUrl,
             note: latestVersion.note,
             submittedAt: latestVersion.submittedAt,
+            files: finalFiles,
           }
         : null,
     };

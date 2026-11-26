@@ -22,7 +22,7 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
-import { formatDateTime, toDateTimeLocalString } from "@/lib/utils";
+import { formatDateTime, toDateTimeLocalString, formatFileSize } from "@/lib/utils";
 import { gradeSubmission, updateAssignment, deleteAssignment } from "../actions";
 
 export interface AssignmentDetailData {
@@ -70,6 +70,12 @@ export interface StudentSubmissionRow {
     externalUrl: string | null;
     note: string | null;
     submittedAt: Date;
+    files?: Array<{
+      id: string;
+      fileObjectKey: string;
+      originalFilename: string;
+      fileSize: number;
+    }>;
   } | null;
 }
 
@@ -470,8 +476,40 @@ export function AssignmentDetailClient({
                 </span>
               </div>
 
-              {/* File Attachment */}
-              {selectedSub.latestVersion?.originalFilename && (
+              {/* File Attachment(s) */}
+              {selectedSub.latestVersion?.files && selectedSub.latestVersion.files.length > 0 ? (
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-semibold text-[#667085] block">
+                    Berkas Lampiran Mahasiswa ({selectedSub.latestVersion.files.length}):
+                  </span>
+                  {selectedSub.latestVersion.files.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-[#E4E9F2]"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileCheck2 className="w-4 h-4 text-[#2457D6] shrink-0" />
+                        <span className="text-xs font-medium text-[#172033] truncate">
+                          {file.originalFilename}
+                        </span>
+                        {file.fileSize > 0 && (
+                          <span className="text-[11px] text-[#667085] shrink-0">
+                            ({formatFileSize(file.fileSize)})
+                          </span>
+                        )}
+                      </div>
+                      <a
+                        href={`/api/files/submission/${selectedSub.latestVersion?.id}?fileId=${file.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-[#EEF3FF] text-[#2457D6] hover:bg-[#DCE7FD] transition-colors shrink-0"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Unduh
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : selectedSub.latestVersion?.originalFilename ? (
                 <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-[#E4E9F2]">
                   <div className="flex items-center gap-2 overflow-hidden">
                     <FileCheck2 className="w-4 h-4 text-[#2457D6] shrink-0" />
@@ -488,7 +526,7 @@ export function AssignmentDetailClient({
                     <Download className="w-3.5 h-3.5" /> Unduh File
                   </a>
                 </div>
-              )}
+              ) : null}
 
               {/* External URL */}
               {selectedSub.latestVersion?.externalUrl && (

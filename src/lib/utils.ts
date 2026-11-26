@@ -136,3 +136,11 @@ export function formatDecimal(val: number | string | null | undefined, decimals 
   if (isNaN(num)) return "—";
   return num.toFixed(decimals);
 }
+
+export function formatFileSize(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
